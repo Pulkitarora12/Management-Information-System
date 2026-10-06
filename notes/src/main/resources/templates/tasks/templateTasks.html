@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Tasks from Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            background-color: #f5f7fa;
+            padding: 40px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            background-color: #fff;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+        }
+
+        thead {
+            background-color: #ecf0f1;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+        }
+
+        th {
+            color: #34495e;
+            font-weight: 600;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .btn-view {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .btn-view:hover {
+            background-color: #2980b9;
+        }
+
+        .top-actions {
+            margin-bottom: 20px;
+        }
+
+        .top-actions a button {
+            background-color: #7f8c8d;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            .top-actions button {
+                width: 100%;
+            }
+            table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<h2 th:text="'Tasks created from Template: ' + ${templateTitle}"></h2>
+
+<div class="top-actions">
+    <a th:href="@{/template}">
+        <button>⬅ Back to Templates</button>
+    </a>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>Task No</th>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Priority</th>
+        <th>Due Date</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr th:each="task : ${tasks}">
+        <td th:text="${task.taskNo}"></td>
+        <td th:text="${task.title}"></td>
+        <td th:text="${task.status}"></td>
+        <td th:text="${task.priority}"></td>
+        <td th:text="${task.dueDate}"></td>
+        <td>
+            <a th:href="@{/tasks/{id}(id=${task.taskId})}">
+                <button class="btn-view">View</button>
+            </a>
+        </td>
+    </tr>
+
+    <tr th:if="${tasks.isEmpty()}">
+        <td colspan="6" style="text-align:center; color:#7f8c8d;">
+            No tasks have been created from this template yet.
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

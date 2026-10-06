@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Update User Role</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/output.css}">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .success-message {
+            background: #c6f6d5;
+            border: 1px solid #9ae6b4;
+            color: #22543d;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+            color: #2d3748;
+        }
+
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button[type="submit"]:hover {
+            background: #5568d3;
+        }
+
+        .back-link-container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #5568d3;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px 12px;
+            }
+            .header, .card, .back-link-container {
+                padding: 16px;
+            }
+            .back-link {
+                width: 100%;
+                text-align: center;
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Update User Role</h2>
+        </div>
+
+        <div class="card">
+            <div th:if="${success}" class="success-message">
+                <p th:text="${success}"></p>
+            </div>
+
+            <form th:action="@{/admin/update-role}" method="post">
+                <div class="form-group">
+                    <label>User ID</label>
+                    <input type="number" name="userId" required placeholder="Enter user ID">
+                </div>
+
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="roleName">
+                        <option value="ROLE_USER">USER</option>
+                        <option value="ROLE_ADMIN">ADMIN</option>
+                    </select>
+                </div>
+
+                <button type="submit">Update Role</button>
+            </form>
+        </div>
+
+        <div class="back-link-container">
+            <a th:href="@{/auth/dashboard}" class="back-link">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>In & Out Logs</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 24px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: white;
+            padding: 20px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .back-btn {
+            background: #4a5568;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: #2d3748;
+        }
+
+        /* ===== Grid Workspace ===== */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Cards ===== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+
+        /* ===== Forms ===== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #2d3748;
+            background: white;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: #2e7d32;
+        }
+
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 12px;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background: #1b5e20;
+        }
+
+        /* ===== Alert System ===== */
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .alert-success {
+            background: #e6fffa;
+            color: #006853;
+            border: 1px solid #b2f5ea;
+        }
+
+        .alert-danger {
+            background: #fff5f5;
+            color: #9b2c2c;
+            border: 1px solid #fed7d7;
+        }
+
+        /* ===== Tables ===== */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            text-align: left;
+        }
+
+        th {
+            background: #edf2f7;
+            color: #4a5568;
+            font-weight: 700;
+            padding: 12px 14px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #2d3748;
+            font-size: 13px;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: #f7fafc;
+        }
+
+        /* ===== Check In Controls ===== */
+        .checkin-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-checkin-time {
+            padding: 6px 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #2d3748;
+            outline: none;
+        }
+
+        .input-checkin-time:focus {
+            border-color: #2e7d32;
+        }
+
+        .btn-checkin {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-checkin:hover {
+            background: #1b5e20;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #e53e3e;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .btn-delete:hover {
+            text-decoration: underline;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        .time-badge {
+            font-weight: 700;
+            color: #c53030;
+        }
+
+        /* ===== Responsiveness ===== */
+        @media (max-width: 768px) {
+            .hide-mobile {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 16px;
+            }
+            .back-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .grid-layout {
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h2>In & Out Logs</h2>
+        <a th:href="@{/auth/dashboard}" class="back-btn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Dashboard
+        </a>
+    </div>
+
+    <!-- Alert Notifications -->
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <!-- Workspace Grid -->
+    <div class="grid-layout">
+        <!-- Outward movement logger sidebar -->
+        <div class="sidebar-panel">
+            <div class="card">
+                <div class="card-title">Log Outward Movement</div>
+                <form th:action="@{/hr/in-out/out}" method="post">
+                    <div class="form-group">
+                        <label class="form-label" for="employeeId">Select Employee</label>
+                        <select name="employeeId" id="employeeId" class="form-control" required>
+                            <option value="" disabled selected>Choose an employee...</option>
+                            <option th:each="emp : ${employees}" th:value="${emp.id}" th:text="${emp.name + ' (' + emp.phoneNumber + ')'}"></option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="outTimeStr">Out Date & Time</label>
+                        <input type="datetime-local" name="outTimeStr" id="outTimeStr" class="form-control datetime-input" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="remarks">Remarks / Reason</label>
+                        <textarea name="remarks" id="remarks" rows="3" class="form-control" placeholder="Personal work, official assignment, etc..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn">Log Outward Movement</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lists panel -->
+        <div class="main-display">
+            <!-- Active movements card -->
+            <div class="card">
+                <div class="card-title" style="color: #c53030;">Active Outward Movements (Currently Outside)</div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th class="hide-mobile">Phone Number</th>
+                                <th>Out Time</th>
+                                <th class="hide-mobile">Remarks</th>
+                                <th>Log Return (Check In)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${activeEntries}">
+                                <td th:text="${entry.employee.name}" style="font-weight: 600; color: #1a202c;">John Doe</td>
+                                <td class="hide-mobile" th:text="${entry.employee.phoneNumber}">9876543210</td>
+                                <td th:text="${#temporals.format(entry.outTime, 'dd-MMM-yyyy hh:mm a')}">24-Jun-2026 10:00 AM</td>
+                                <td class="hide-mobile" th:text="${entry.remarks ?: '-'}">Personal</td>
+                                <td>
+                                    <!-- Dynamic Check-In Form with time pre-fill support -->
+                                    <form th:action="@{/hr/in-out/{id}/in(id=${entry.id})}" method="post" class="checkin-container">
+                                        <input type="datetime-local" name="inTimeStr" class="input-checkin-time datetime-input" required />
+                                        <button type="submit" class="btn-checkin">Check In</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(activeEntries)}">
+                                <td colspan="5" class="no-data">All employees are currently checked in. No active outward logs.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historical logs card -->
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-title">Recent In & Out Logs History</div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th class="hide-mobile">Out Time</th>
+                                <th class="hide-mobile">In Time</th>
+                                <th>Duration Spent Outside</th>
+                                <th>Remarks</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${historicalEntries}">
+                                <td th:text="${entry.employee.name}" style="font-weight: 600; color: #1a202c;">John Doe</td>
+                                <td class="hide-mobile" th:text="${#temporals.format(entry.outTime, 'dd-MMM-yyyy hh:mm a')}">24-Jun-2026 10:00 AM</td>
+                                <td class="hide-mobile" th:text="${#temporals.format(entry.inTime, 'dd-MMM-yyyy hh:mm a')}">24-Jun-2026 12:30 PM</td>
+                                <td class="time-badge" th:text="${entry.durationMinutes != null ? (entry.durationMinutes / 60 + ' hrs ' + entry.durationMinutes % 60 + ' mins') : '-'}">2 hrs 30 mins</td>
+                                <td th:text="${entry.remarks ?: '-'}">Personal</td>
+                                <td>
+                                    <form th:action="@{/hr/in-out/{id}/delete(id=${entry.id})}" method="post" onsubmit="return confirm('Are you sure you want to delete this log entry?');">
+                                        <button type="submit" class="btn-delete">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(historicalEntries)}">
+                                <td colspan="6" class="no-data">No movement history logs recorded yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Pre-fill datetime inputs with current local date-time
+    document.addEventListener("DOMContentLoaded", function() {
+        const datetimeInputs = document.querySelectorAll(".datetime-input");
+        const now = new Date();
+        
+        // Format to YYYY-MM-DDTHH:MM
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const formattedLocalTime = `${year}-${month}-${day}T${hours}-${minutes}`;
+        // Standard ISO format is with ':' instead of '-'
+        const standardLocalTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        datetimeInputs.forEach(input => {
+            if (!input.value) {
+                input.value = standardLocalTime;
+            }
+        });
+    });
+</script>
+</body>
+</html>

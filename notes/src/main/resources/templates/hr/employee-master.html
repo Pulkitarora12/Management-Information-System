@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Employee Master</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 24px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: white;
+            padding: 20px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .back-btn {
+            background: #4a5568;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: #2d3748;
+        }
+
+        /* ===== Main Layout ===== */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Cards ===== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+
+        /* ===== Form controls ===== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .file-input-wrapper:hover {
+            border-color: #2e7d32;
+            background: #eaf5eb;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-input-text {
+            color: #718096;
+            font-size: 13px;
+        }
+
+        .file-input-text strong {
+            color: #2e7d32;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 12px;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background: #1b5e20;
+        }
+
+        /* ===== Alert System ===== */
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .alert-success {
+            background: #e6fffa;
+            color: #006853;
+            border: 1px solid #b2f5ea;
+        }
+
+        .alert-danger {
+            background: #fff5f5;
+            color: #9b2c2c;
+            border: 1px solid #fed7d7;
+        }
+
+        /* ===== Search Filter ===== */
+        .search-container {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
+        }
+
+        /* ===== Table Panel ===== */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            text-align: left;
+        }
+
+        th {
+            background: #edf2f7;
+            color: #4a5568;
+            font-weight: 700;
+            padding: 14px 16px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #2d3748;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: #f7fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-mandatory {
+            background: #ebf8ff;
+            color: #2b6cb0;
+        }
+
+        .action-link {
+            color: #2e7d32;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .action-link:hover {
+            color: #1b5e20;
+            text-decoration: underline;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+            font-size: 15px;
+        }
+
+        /* ===== Responsiveness ===== */
+        @media (max-width: 1024px) {
+            .hide-tablet {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hide-mobile {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 16px;
+            }
+            .back-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .grid-layout {
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h2>Employee Master</h2>
+        <a th:href="@{/auth/dashboard}" class="back-btn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Dashboard
+        </a>
+    </div>
+
+    <!-- Alert Notifications -->
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <!-- Main Workspace Grid -->
+    <div class="grid-layout">
+        <!-- Sidebar Controls -->
+        <div class="sidebar-panel">
+            <div class="card">
+                <div class="card-title">Upload Database</div>
+                <form th:action="@{/hr/employee-master/upload}" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">CSV or Excel Document</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" name="file" accept=".csv, .xlsx, .xls" required onchange="updateFilenameDisplay(this)" />
+                            <div class="file-input-text" id="file-label-text">
+                                <strong>Choose File</strong>
+                                drag & drop or click to browse
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Upload & Parse</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Spreadsheet Format</div>
+                <p style="font-size: 13px; color: #718096; line-height: 1.6; margin-bottom: 12px;">
+                    Upload a CSV/Excel file with headers. The following columns will be parsed:
+                </p>
+                <ul style="padding-left: 20px; font-size: 12px; color: #4a5568; line-height: 1.8;">
+                    <li><strong>Name</strong> <span class="badge badge-mandatory">Mandatory</span></li>
+                    <li><strong>Father Name</strong></li>
+                    <li><strong>Employee Code</strong></li>
+                    <li><strong>Contractor Name</strong></li>
+                    <li><strong>Phone Number</strong> <span class="badge badge-mandatory">Mandatory</span></li>
+                    <li><strong>Gender</strong> <span class="badge badge-mandatory">Mandatory</span></li>
+                    <li><strong>Address</strong> <span class="badge badge-mandatory">Mandatory</span></li>
+                    <li>Email</li>
+                    <li>Roles</li>
+                    <li>Salary</li>
+                    <li>Bank Account</li>
+                    <li>ESI Number</li>
+                    <li>PF Number</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Display Panel -->
+        <div class="main-display">
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-title">Employees Directory</div>
+                
+                <!-- Search box -->
+                <div class="search-container">
+                    <input type="text" id="employeeSearch" class="search-input" placeholder="Search by name, phone, roles, address, etc..." onkeyup="filterEmployeesTable()" />
+                </div>
+
+                <div class="table-responsive">
+                    <table id="employeesTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Father's Name</th>
+                                <th>Contractor</th>
+                                <th>Phone Number</th>
+                                <th>Gender</th>
+                                <th>Address</th>
+                                <th>Email</th>
+                                <th>Roles</th>
+                                <th>Salary</th>
+                                <th>Bank Account</th>
+                                <th>ESI Number</th>
+                                <th>PF Number</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="emp : ${employees}" 
+                                th:data-search="${#strings.toLowerCase(emp.name + ' ' + emp.phoneNumber + ' ' + emp.gender + ' ' + (emp.address ?: '') + ' ' + (emp.email ?: '') + ' ' + (emp.roles ?: '') + ' ' + (emp.employeeCode ?: '') + ' ' + (emp.fatherName ?: '') + ' ' + (emp.contractorName ?: '') + ' ' + (emp.bankAccount ?: '') + ' ' + (emp.esiNumber ?: '') + ' ' + (emp.psiNumber ?: ''))}">
+                                <td th:text="${emp.name}" style="font-weight: 600; color: #1a202c;"></td>
+                                <td th:text="${emp.fatherName ?: '-'}"></td>
+                                <td th:text="${emp.contractorName ?: '-'}"></td>
+                                <td th:text="${emp.phoneNumber}"></td>
+                                <td th:text="${emp.gender}"></td>
+                                <td th:text="${emp.address ?: '-'}"></td>
+                                <td th:text="${emp.email ?: '-'}"></td>
+                                <td th:text="${emp.roles ?: '-'}"></td>
+                                <td th:text="${emp.salary != null ? emp.salary : '-'}"></td>
+                                <td th:text="${emp.bankAccount ?: '-'}"></td>
+                                <td th:text="${emp.esiNumber ?: '-'}"></td>
+                                <td th:text="${emp.psiNumber ?: '-'}"></td>
+                                <td>
+                                    <a th:href="@{/hr/employee-master/{id}(id=${emp.id})}" class="action-link">View / Edit</a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(employees)}">
+                                <td colspan="13" class="no-data">No employee records found. Upload a CSV/Excel file to populate the list.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateFilenameDisplay(input) {
+        const textWrapper = document.getElementById('file-label-text');
+        if (input.files && input.files.length > 0) {
+            textWrapper.innerHTML = `<strong>Selected File</strong>${input.files[0].name}`;
+        } else {
+            textWrapper.innerHTML = `<strong>Choose File</strong>drag & drop or click to browse`;
+        }
+    }
+
+    function filterEmployeesTable() {
+        const input = document.getElementById("employeeSearch");
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById("employeesTable");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            // If the row is the "No data" row, skip
+            if (tr[i].getElementsByTagName("td").length < 5) continue;
+
+            const row = tr[i];
+            const searchData = row.getAttribute("data-search");
+            
+            if (searchData) {
+                if (searchData.indexOf(filter) > -1) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>

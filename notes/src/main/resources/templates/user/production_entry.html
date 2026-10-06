@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Production Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Page background */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            font-size: 13px;
+            min-height: 100vh;
+        }
+
+        /* Heading */
+        h2 {
+            color: #1976d2;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        /* Section heading */
+        h3 {
+            color: #1976d2;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 5px;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            text-align: center;
+            border-left: 4px solid #4caf50;
+        }
+
+        /* Clean white form container */
+        form {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px 20px;
+            margin-bottom: 15px;
+        }
+
+        .form-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            width: 90px;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        input[type="text"], input[type="date"], input[type="time"], input[type="number"], select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            flex: 1;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="date"]:focus,
+        input[type="time"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background-color: white;
+            font-size: 12px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        table thead {
+            background: #1976d2;
+            color: white;
+        }
+
+        table th {
+            padding: 12px 8px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        table td {
+            padding: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        table tbody tr:hover {
+            background-color: #f7fafc;
+        }
+
+        /* Button styling */
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-right: 8px;
+            transition: all 0.3s ease;
+        }
+
+        button[type="button"] {
+            background: #1976d2;
+            color: white;
+        }
+
+        button[type="submit"] {
+            background: #4caf50;
+            color: white;
+            padding: 10px 30px;
+            font-size: 15px;
+        }
+
+        button[type="reset"] {
+            background: #f44336;
+            color: white;
+            padding: 10px 30px;
+            font-size: 15px;
+        }
+
+        .button-group {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .form-actions {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Make downtime inputs wider */
+        #downtimeTable td input,
+        #downtimeTable td select {
+            width: 95%;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        /* Align cells better */
+        #downtimeTable td {
+            vertical-align: middle;
+            padding: 10px 15px;
+        }
+
+        /* Move Remove button slightly right */
+        #downtimeTable td button {
+            margin-left: 10px;
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
+        .button-group.downtime-btn {
+            margin-top: 12px;
+        }
+
+        /* Time slot table styling */
+        #timeSlotTable td input,
+        #timeSlotTable td select {
+            width: 95%;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        #timeSlotTable td {
+            vertical-align: middle;
+        }
+
+        /* Top action buttons */
+        .top-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .top-actions a button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .top-actions .btn-dashboard {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .top-actions .btn-dashboard:hover {
+            background: #cbd5e0;
+        }
+
+        @media (max-width: 1024px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            form {
+                padding: 16px;
+            }
+            .section {
+                padding: 12px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            table {
+                min-width: 600px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .form-field {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .form-field[style*="grid-column"] {
+                grid-column: span 1 !important;
+            }
+            label {
+                width: auto !important;
+            }
+            .button-group {
+                flex-direction: column;
+            }
+            .form-actions button {
+                width: 100%;
+                margin-bottom: 10px;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="top-actions">
+    <a th:href="@{/auth/dashboard}">
+        <button type="button" class="btn-dashboard">
+            Back to Dashboard
+        </button>
+    </a>
+</div>
+
+
+<h2>Production Entry</h2>
+
+<div th:if="${success}" class="success-message">
+    <p>
+        <span th:text="${success}"></span>
+        <br/>
+        <strong>Entry ID:</strong>
+        <span th:text="${savedId}"></span>
+    </p>
+</div>
+
+<form th:action="@{/production-entry}" method="post" th:object="${dto}">
+
+    <!-- Basic Info -->
+    <div class="form-grid">
+        <div class="form-field"><label>Date:</label><input type="date" th:field="*{date}" required /></div>
+        <div class="form-field">
+            <label>Shift:</label>
+            <select th:field="*{shift}" required>
+                <option value="">-- Select Shift --</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Line:</label>
+            <select th:field="*{line}" required>
+                <option value="">-- Select Line --</option>
+                <option value="Line 1">Line 1</option>
+                <option value="Line 2">Line 2</option>
+                <option value="Line 3">Line 3</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Machine:</label>
+            <select th:field="*{machine}" required>
+                <option value="">-- Select Machine --</option>
+                <option th:each="m : ${machineNames}" th:value="${m}" th:text="${m}"></option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Operation:</label>
+            <select th:field="*{operation}" required>
+                <option value="">-- Select Operation --</option>
+                <option th:each="o : ${operations}" th:value="${o}" th:text="${o}"></option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Operator 1:</label>
+            <select th:field="*{operator1}" required>
+                <option value="">-- Select Operator --</option>
+                <option th:each="op : ${operators}" th:value="${op}" th:text="${op}"></option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Operator 2:</label>
+            <select th:field="*{operator2}" required>
+                <option value="">-- Select Operator --</option>
+                <option th:each="op : ${operators}" th:value="${op}" th:text="${op}"></option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Part Name:</label>
+            <select id="partNameSelect" th:field="*{partName}" required>
+                <option value="">-- Select Part Name --</option>
+                <option th:each="p : ${partDetails}"
+                        th:value="${p.partName}"
+                        th:text="${p.partName + ' (' + p.partNo + ')'}"
+                        th:attr="data-partNo=${p.partNo}">
+                </option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Part No:</label>
+            <input type="text" id="partNoInput" th:field="*{partNo}" readonly />
+        </div>
+        <div class="form-field" style="grid-column: span 1;">
+            <label>Remarks:</label><input type="text" th:field="*{remarks}" />
+        </div>
+        <div class="form-field" style="grid-column: span 1;">
+            <label>Sheet Size:</label><input type="text" th:field="*{sheetSize}" required />
+        </div>
+
+        <div class="form-field">
+            <label>Inspector:</label>
+            <input type="text" th:field="*{inspector}" readonly />
+        </div>
+    </div>
+
+    <!-- Time Slot (Single Row Table) -->
+    <div class="section">
+        <h3>Time Slot</h3>
+        <table id="timeSlotTable">
+            <thead>
+            <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Produced</th>
+                <th>Segregated</th>
+                <th>Rejected</th>
+                <th>Reason</th>
+                <th>Remarks</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><input type="time" th:field="*{timeSlot.fromTime}" required /></td>
+                <td><input type="time" th:field="*{timeSlot.toTime}" required /></td>
+                <td><input type="number" th:field="*{timeSlot.produced}" required /></td>
+                <td><input type="number" th:field="*{timeSlot.segregated}" required /></td>
+                <td><input type="number" th:field="*{timeSlot.rejected}" /></td>
+                <td>
+                    <select th:field="*{timeSlot.reason}">
+                        <option value="">-- Select Reason --</option>
+                        <option th:each="r : ${rejectionReasons}" th:value="${r}" th:text="${r}"></option>
+                    </select>
+                </td>
+                <td><input type="text" th:field="*{timeSlot.remarks}" /></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Downtime -->
+    <div class="section">
+        <h3>Downtime</h3>
+        <table id="downtimeTable">
+            <thead>
+            <tr>
+                <th>Reason</th>
+                <th>Minutes</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <!-- Hidden template for downtime reasons -->
+        <select id="downtimeReasonTemplate" style="display:none;">
+            <option value="">-- Select Downtime Reason --</option>
+            <option th:each="d : ${downtimeReasons}" th:value="${d}" th:text="${d}"></option>
+        </select>
+        <div class="button-group downtime-btn">
+            <button type="button" onclick="addDowntime()">+ Add Downtime Row</button>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="reset">Reset</button>
+        <button type="submit" id="submitBtn">Submit Production Entry</button>
+    </div>
+</form>
+
+<script>
+    let downtimeIndex = 0;
+
+    function addDowntime() {
+        const table = document.querySelector('#downtimeTable tbody');
+        const downtimeReasonOptions = document.getElementById('downtimeReasonTemplate').innerHTML;
+        table.insertAdjacentHTML('beforeend', `
+            <tr>
+                <td><select name="downtimeEntries[${downtimeIndex}].reason">${downtimeReasonOptions}</select></td>
+                <td><input type="number" name="downtimeEntries[${downtimeIndex}].minutes"></td>
+                <td><button type="button" onclick="this.closest('tr').remove()">Remove</button></td>
+            </tr>`);
+        downtimeIndex++;
+    }
+
+    document.getElementById('partNameSelect').addEventListener('change', function () {
+        const selectedOption = this.options[this.selectedIndex];
+        const partNo = selectedOption.getAttribute('data-partNo');
+        document.getElementById('partNoInput').value = partNo || '';
+    });
+
+    const form = document.querySelector("form");
+    const submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener('submit', function (e) {
+
+        const rejected = document.querySelector('input[name="timeSlot.rejected"]').value;
+        const reason = document.querySelector('select[name="timeSlot.reason"]').value;
+
+        if (rejected && parseInt(rejected) > 0 && !reason) {
+            e.preventDefault();
+            alert('Please select a rejection reason');
+            return;
+        }
+
+        const downtimeRows = document.querySelectorAll('#downtimeTable tbody tr');
+        for (let row of downtimeRows) {
+            const minutes = row.querySelector('input[type="number"]').value;
+            const downtimeReason = row.querySelector('select').value;
+
+            if (minutes && parseInt(minutes) > 0 && !downtimeReason) {
+                e.preventDefault();
+                alert('Please select a downtime reason');
+                return;
+            }
+        }
+
+        // ✅ Disable button ONLY after validation passes
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Submitting...";
+        submitBtn.style.opacity = "0.7";
+        submitBtn.style.cursor = "not-allowed";
+    });
+</script>
+
+</body>
+</html>

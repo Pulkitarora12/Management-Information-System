@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Signup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/output.css}">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Layout */
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Signup Container */
+        .signup-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.15);
+            padding: 45px 40px;
+            width: 100%;
+            max-width: 460px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Title */
+        h2 {
+            text-align: center;
+            color: #1a202c;
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        /* Messages */
+        .error-message,
+        .success-message {
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #b91c1c;
+            border-left: 4px solid #ef4444;
+        }
+
+        .success-message {
+            background: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+
+        /* Form Inputs */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #4a5568;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f9fafb;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            border-color: #6366f1;
+            background: white;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        select option {
+            background: white;
+            color: #1a202c;
+            padding: 10px;
+        }
+
+        select option:disabled {
+            color: #a0aec0;
+        }
+
+        /* Password Toggle */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 70px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #6366f1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .toggle-password:hover {
+            background: #4f46e5;
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .toggle-password:active {
+            transform: translateY(-50%) scale(0.98);
+        }
+
+        /* Submit Button */
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button[type="submit"]:hover {
+            background: #4338ca;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        button[type="submit"]:active {
+            transform: scale(0.98);
+        }
+
+        /* Login Link */
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .login-link a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+            color: #4338ca;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .signup-container {
+                padding: 30px 25px;
+            }
+
+            h2 {
+                font-size: 24px;
+            }
+
+            input, select {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="signup-container">
+    <h2>Create Account</h2>
+    <p class="subtitle">Fill your details to proceed</p>
+
+    <div th:if="${error}" class="error-message"><p th:text="${error}"></p></div>
+    <div th:if="${success}" class="success-message"><p th:text="${success}"></p></div>
+
+    <form th:action="@{/auth/signup}" th:object="${signupRequest}" method="post">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" th:field="*{username}" required minlength="3" placeholder="Enter your username">
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" th:field="*{email}" required placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <div class="password-wrapper">
+                <input type="password" th:field="*{password}" required minlength="6" id="password" placeholder="Enter your password">
+                <button type="button" class="toggle-password" onclick="togglePassword()">Show</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" th:field="*{employeeFullName}" placeholder="Enter your full name">
+        </div>
+
+        <div class="form-group">
+            <label>Department</label>
+            <select th:field="*{employeeDepartment}" required>
+                <option value="" disabled
+                        th:selected="${signupRequest.employeeDepartment == null}">
+                    Select Department
+                </option>
+                <option value="Accounts">Accounts</option>
+                <option value="Quality">Quality</option>
+                <option value="Production">Production</option>
+                <option value="Dispatch">Dispatch</option>
+                <option value="Purchase">Purchase</option>
+                <option value="Maintainance">Maintainance</option>
+                <option value="HR">HR</option>
+                <option value="Admin">Admin</option>
+            </select>
+        </div>
+
+        <input type="hidden" name="employeeSignup" th:if="${employeeSignup}" value="true">
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <div class="login-link">
+        <p>Already have an account? <a th:href="@{/auth/login}">Login here</a></p>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        const input = document.getElementById("password");
+        const button = document.querySelector(".toggle-password");
+        if (input.type === "password") {
+            input.type = "text";
+            button.textContent = "Hide";
+        } else {
+            input.type = "password";
+            button.textContent = "Show";
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Create Task</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .task-container {
+            background: white;
+            width: 100%;
+            max-width: 540px;
+            border-radius: 14px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #1a202c;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 6px;
+            display: block;
+            color: #2d3748;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e0;
+            font-size: 14px;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #1976d2;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            flex: 1;
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1565c0;
+        }
+
+        .back-link {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+            background: #e2e8f0;
+            text-decoration: none;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .back-link:hover {
+            background: #cbd5e0;
+        }
+
+        .top-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .top-actions a button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .top-actions .btn-dashboard {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .top-actions .btn-dashboard:hover {
+            background: #cbd5e0;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+            .task-container {
+                padding: 20px;
+            }
+            .actions {
+                flex-direction: column;
+            }
+            .back-link {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="task-container">
+    <div class="top-actions">
+
+        <a th:href="@{/auth/dashboard}">
+            <button type="button" class="btn-dashboard">
+                Back to Dashboard
+            </button>
+        </a>
+    </div>
+
+    <h2>Create New Task</h2>
+
+    <form th:action="@{/tasks}" method="post">
+
+        <!-- Title -->
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text"
+                   id="title"
+                   name="title"
+                   th:value="${prefillTitle != null ? prefillTitle : ''}"
+                   required>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      th:text="${prefillDescription != null ? prefillDescription : ''}">
+</textarea>
+        </div>
+
+        <!-- Priority -->
+        <div class="form-group">
+            <label for="priority">Priority</label>
+            <select id="priority" name="priority" required>
+                <option value="">Select priority</option>
+
+                <option value="LOW"
+                        th:selected="${prefillPriority != null && prefillPriority.name() == 'LOW'}">
+                    LOW
+                </option>
+
+                <option value="MEDIUM"
+                        th:selected="${prefillPriority != null && prefillPriority.name() == 'MEDIUM'}">
+                    MEDIUM
+                </option>
+
+                <option value="HIGH"
+                        th:selected="${prefillPriority != null && prefillPriority.name() == 'HIGH'}">
+                    HIGH
+                </option>
+
+                <option value="CRITICAL"
+                        th:selected="${prefillPriority != null && prefillPriority.name() == 'CRITICAL'}">
+                    CRITICAL
+                </option>
+            </select>
+
+        </div>
+
+        <!-- Due Date -->
+        <div class="form-group">
+            <label for="dueDate">Due Date</label>
+            <input type="date"
+                   id="dueDate"
+                   name="dueDate"
+                   required
+                   th:value="${prefillDueDate}"
+                   th:readonly="${sourceTemplateId != null}">
+        </div>
+
+            <input type="hidden"
+                   name="sourceTemplateId"
+                   th:value="${sourceTemplateId}">
+
+        <div class="actions">
+            <button type="submit">Create Task</button>
+            <a th:href="@{/tasks}" class="back-link">Back</a>
+        </div>
+
+    </form>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Master Details - Excel Style</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #1a202c;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 15px;
+            color: #2d3748;
+            margin: 4px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #1976d2;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex-direction: row-reverse;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            border: none;
+            transition: 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-primary:hover {
+            background: #1565c0;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px 12px;
+            }
+            .container {
+                padding: 20px 16px;
+            }
+            table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+        @media (max-width: 600px) {
+            .actions {
+                flex-direction: column;
+            }
+            .actions .btn, .actions form, .actions button {
+                width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="actions">
+        <a th:href="@{/masters}" class="btn btn-secondary">Back to Master List</a>
+        <form th:if="${master != null and #authorization.expression('hasRole(''ROLE_ADMIN'')')}"
+              th:action="@{'/masters/' + ${master.id} + '/delete'}" method="post">
+            <button type="submit" class="btn btn-danger"
+                    onclick="return confirm('Are you sure you want to delete this master?')">
+                Delete Master
+            </button>
+        </form>
+    </div>
+
+    <div th:if="${master != null}">
+        <h2>Master Details</h2>
+        <p><strong>Master ID:</strong> <span th:text="${master.id}"></span></p>
+        <p><strong>Master Name:</strong> <span th:text="${master.name}"></span></p>
+
+        <hr>
+
+        <!-- If master has fields -->
+        <div th:if="${master.fields != null and !master.fields.isEmpty()}">
+
+            <!-- If data rows exist -->
+            <div th:if="${master.fields.get(0).fieldData.size() > 0}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th th:each="field : ${master.fields}" th:text="${field.fieldName}"></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="i : ${#numbers.sequence(0, master.fields.get(0).fieldData.size() - 1)}">
+                        <td th:each="field : ${master.fields}"
+                            th:text="${field.fieldData.size() > i ? field.fieldData.get(i).value : ' - '}"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- If fields exist but no data yet -->
+            <div th:unless="${master.fields.get(0).fieldData.size() > 0}">
+                <p><i>No data available yet for this master.</i></p>
+            </div>
+
+        </div>
+
+        <!-- If no fields at all -->
+        <div th:if="${master.fields == null or master.fields.isEmpty()}">
+            <p><i>No fields found for this master.</i></p>
+        </div>
+    </div>
+
+    <div th:if="${master == null}">
+        <p><i>Master not found.</i></p>
+    </div>
+
+</div>
+
+</body>
+</html>

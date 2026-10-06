@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Raw Material Inspection (RMIR)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 15px;
+            min-height: 100vh;
+        }
+
+        h2 {
+            color: #1976d2;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        h3 {
+            color: #1976d2;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .success-message {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            border-left: 4px solid #4caf50;
+        }
+
+        form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px 20px;
+            margin-bottom: 15px;
+        }
+
+        .form-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+            width: 140px;
+            flex-shrink: 0;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            background-color: white;
+        }
+
+        table thead {
+            background-color: #1976d2;
+            color: white;
+        }
+
+        table th {
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        table td input {
+            width: 100%;
+            padding: 5px 8px;
+            font-size: 13px;
+        }
+
+        table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            margin-right: 8px;
+            transition: background-color 0.3s;
+        }
+
+        button[type="button"] {
+            background-color: #1976d2;
+            color: white;
+        }
+
+        button[type="button"]:hover {
+            background-color: #1565c0;
+        }
+
+        button[type="reset"] {
+            background: #f44336;
+            color: white;
+            padding: 10px 30px;
+            font-size: 15px;
+        }
+
+        button[type="submit"] {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 24px;
+            font-size: 15px;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        table td button {
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+        }
+
+        table td button:hover {
+            background-color: #d32f2f;
+        }
+
+        .button-group {
+            margin-bottom: 10px;
+        }
+
+        .form-actions {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .top-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .top-actions a button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .top-actions .btn-dashboard {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .top-actions .btn-dashboard:hover {
+            background: #cbd5e0;
+        }
+
+        @media (max-width: 1024px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            form {
+                padding: 16px;
+            }
+            table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .form-field {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            label {
+                width: auto !important;
+            }
+            .form-actions button {
+                width: 100%;
+                margin-bottom: 10px;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-actions">
+    <a th:href="@{/auth/dashboard}">
+        <button type="button" class="btn-dashboard">
+            Back to Dashboard
+        </button>
+    </a>
+</div>
+
+<h2>Raw Material Inspection (RMIR)</h2>
+
+<div th:if="${success}" class="success-message">
+    <p>
+        <span th:text="${success}"></span>
+        <br/>
+        <strong>Entry ID:</strong>
+        <span th:text="${savedId}"></span>
+    </p>
+</div>
+
+<form th:action="@{/rmir-entry}" method="post" th:object="${dto}">
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label>Part Name:</label>
+            <select id="partNameSelect" th:field="*{partName}" required>
+                <option value="">-- Select Part Name --</option>
+                <option th:each="p : ${partDetails}"
+                        th:value="${p.partName}"
+                        th:text="${p.partName + ' (' + p.partNo + ')'}"
+                        th:attr="data-partNo=${p.partNo}, data-rmSize=${p.rmSize}, data-grade=${p.grade}, data-gw=${p.gw}">
+                </option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Part No:</label>
+            <input type="text" id="partNoInput" th:field="*{partNo}" readonly />
+        </div>
+
+        <div class="form-field">
+            <label>RM Size:</label>
+            <input id="rmSizeInput" type="text" th:field="*{rmSize}" readonly />
+        </div>
+
+        <div class="form-field">
+            <label>RM Grade:</label>
+            <input id="rmGradeInput" type="text" th:field="*{grade}" readonly />
+        </div>
+
+        <div class="form-field">
+            <label>Std GW:</label>
+            <input id="stdGWInput" type="text" th:field="*{stdGW}" readonly />
+        </div>
+
+        <div class="form-field">
+            <label>Bundle Grade:</label>
+            <select id="bundleGradeInput" th:field="*{bundleGrade}" required>
+                <option value="">-- Select Grades --</option>
+                <option th:each="m : ${grades}" th:value="${m}" th:text="${m}"></option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Bundle No:</label>
+            <input type="text" th:field="*{bundleNo}" required />
+        </div>
+
+        <div class="form-field">
+            <label>Bundle GW (kg):</label>
+            <input type="number" th:field="*{bundleGW}" step="any" required />
+        </div>
+
+        <div class="form-field">
+            <label>Bundle NW (kg):</label>
+            <input type="number" th:field="*{bundleNW}" step="any" required />
+        </div>
+
+        <div class="form-field">
+            <label>Bundle Size (L×W×H):</label>
+            <input type="text" th:field="*{bundleSize}" required />
+        </div>
+
+        <div class="form-field">
+            <label>Suppliers:</label>
+            <select th:field="*{supplier}" required>
+                <option value="">-- Select Supplier --</option>
+                <option th:each="m : ${suppliers}" th:value="${m}" th:text="${m}"></option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Inspector:</label>
+            <input type="text" th:field="*{inspector}" readonly />
+        </div>
+
+        <div class="form-field">
+            <label>Remarks:</label>
+            <input type="text" th:field="*{remarks}" />
+        </div>
+
+        <div class="form-field">
+            <label>Created Date:</label>
+            <input type="date"
+                   th:field="*{createdDate}"
+                   required />
+        </div>
+
+        <div class="form-field">
+            <label>Created Time:</label>
+            <input type="time"
+                   th:field="*{createdTime}"
+                   required />
+        </div>
+    </div>
+
+    <!-- Observations -->
+    <h3>Observations</h3>
+    <div class="button-group">
+        <button type="button" onclick="addObservation()">+ Add Row</button>
+        <button type="button" onclick="resetObservations()">Reset</button>
+    </div>
+
+    <table id="observationTable">
+        <thead>
+        <tr>
+            <th>L</th>
+            <th>W</th>
+            <th>T</th>
+            <th>GW/Sheet</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td><input type="number" name="observations[0].l" step="any" required></td>
+            <td><input type="number" name="observations[0].b" step="any" required></td>
+            <td><input type="number" name="observations[0].h" step="any" required></td>
+            <td><input type="text" name="observations[0].gwSheet" step="any" required></td>
+            <td><button type="button" onclick="removeRow(this)" disabled style="opacity: 0.5; cursor: not-allowed;">Remove</button></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="form-actions">
+        <button type="submit" id="submitBtn">Submit RMIR</button>
+        <button type="reset">Reset</button>
+    </div>
+
+</form>
+
+<script>
+        let observationIndex = 1; // Start from 1 since row 0 exists
+
+        function addObservation() {
+        const table = document.getElementById('observationTable').querySelector('tbody');
+        const row = `<tr>
+            <td><input type="number" step="any" name="observations[${observationIndex}].l" required></td>
+            <td><input type="number" step="any" name="observations[${observationIndex}].b" required></td>
+            <td><input type="number" step="any" name="observations[${observationIndex}].h" required></td>
+            <td><input type="text" step="any" name="observations[${observationIndex}].gwSheet" required></td>
+            <td><button type="button" onclick="removeRow(this)">Remove</button></td>
+        </tr>`;
+        table.insertAdjacentHTML('beforeend', row);
+        observationIndex++;
+        }
+
+        function removeRow(btn) {
+        btn.parentElement.parentElement.remove();
+        }
+
+        function resetObservations() {
+        const tableBody = document.getElementById('observationTable').querySelector('tbody');
+        tableBody.innerHTML = `<tr>
+            <td><input type="number" step="any" name="observations[0].l" required></td>
+            <td><input type="number" step="any"  name="observations[0].b" required></td>
+            <td><input type="number" step="any" name="observations[0].h" required></td>
+            <td><input type="text" step="any" name="observations[0].gwSheet" required></td>
+            <td><button type="button" onclick="removeRow(this)" disabled style="opacity: 0.5; cursor: not-allowed;">Remove</button></td>
+        </tr>`;
+        observationIndex = 1;
+        }
+
+    document.getElementById('partNameSelect').addEventListener('change', function () {
+        const selectedOption = this.options[this.selectedIndex];
+        const partNo = selectedOption.getAttribute('data-partNo');
+        const rmSize = selectedOption.getAttribute('data-rmSize');
+        const grade = selectedOption.getAttribute('data-grade');
+        const gw = selectedOption.getAttribute('data-gw');
+
+        document.getElementById('partNoInput').value = partNo || '';
+        document.getElementById('rmSizeInput').value = rmSize || '';
+        document.getElementById('rmGradeInput').value = grade || '';
+        document.getElementById('stdGWInput').value = gw || '';
+    });
+
+        const form = document.querySelector("form");
+        const submitBtn = document.getElementById("submitBtn");
+
+        form.addEventListener("submit", function () {
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Submitting...";
+            submitBtn.style.opacity = "0.7";
+            submitBtn.style.cursor = "not-allowed";
+        });
+
+</script>
+
+</body>
+</html>

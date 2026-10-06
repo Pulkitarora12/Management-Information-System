@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Time Slots</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Layout */
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header Section */
+        .header {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        h2 span {
+            color: #4f46e5;
+            font-weight: 700;
+        }
+
+        /* Back Button */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: #f3f4f6;
+            color: #4b5563;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .back-link:hover {
+            background: #4f46e5;
+            color: white;
+            border-color: #4338ca;
+            transform: translateX(-4px);
+        }
+
+        /* Table Container */
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+        }
+
+        thead th {
+            color: white;
+            padding: 18px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+            transform: scale(1.01);
+        }
+
+        tbody td {
+            padding: 16px;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        /* Time Columns */
+        tbody td:nth-child(1),
+        tbody td:nth-child(2) {
+            font-weight: 600;
+            color: #4f46e5;
+        }
+
+        /* Number Columns */
+        tbody td:nth-child(3),
+        tbody td:nth-child(4),
+        tbody td:nth-child(5) {
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Produced - Green */
+        tbody td:nth-child(3) {
+            color: #059669;
+        }
+
+        /* Segregated - Blue */
+        tbody td:nth-child(4) {
+            color: #2563eb;
+        }
+
+        /* Rejected - Red */
+        tbody td:nth-child(5) {
+            color: #dc2626;
+        }
+
+        /* Reason Column */
+        tbody td:nth-child(6) {
+            max-width: 200px;
+            font-style: italic;
+            color: #6b7280;
+        }
+
+        /* Remarks Column */
+        tbody td:nth-child(7) {
+            max-width: 250px;
+            color: #4b5563;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 800px;
+            }
+
+            thead th,
+            tbody td {
+                padding: 12px 10px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                padding: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .back-link {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Badges for Numbers */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .badge-produced {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-segregated {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>Time Slots for Entry #<span th:text="${entryId}"></span></h2>
+        <a th:href="@{/production-entry/getAll}" class="back-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to History
+        </a>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+            <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Produced</th>
+                <th>Segregated</th>
+                <th>Rejected</th>
+                <th>Reason</th>
+                <th>Remarks</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="slot : ${timeSlot}">
+                <td th:text="${slot.fromTime}"></td>
+                <td th:text="${slot.toTime}"></td>
+                <td>
+                    <span class="badge badge-produced" th:text="${slot.produced}"></span>
+                </td>
+                <td>
+                    <span class="badge badge-segregated" th:text="${slot.segregated}"></span>
+                </td>
+                <td>
+                    <span class="badge badge-rejected" th:text="${slot.rejected}"></span>
+                </td>
+                <td th:text="${slot.reason}"></td>
+                <td th:text="${slot.remarks}"></td>
+            </tr>
+            <!-- Empty State (shown when no data) -->
+            <tr th:if="${#lists.isEmpty(timeSlot)}">
+                <td colspan="7">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>No time slots available for this entry</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

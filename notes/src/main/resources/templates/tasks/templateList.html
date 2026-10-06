@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Task Templates</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            background-color: #f5f7fa;
+            padding: 30px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        a {
+            text-decoration: none;
+            margin-right: 12px;
+        }
+
+        .top-actions {
+            margin-bottom: 20px;
+        }
+
+        .top-actions a button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .top-actions a:last-child button {
+            background-color: #7f8c8d;
+        }
+
+        table {
+            width: 100%;
+            background-color: #fff;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        thead {
+            background-color: #ecf0f1;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+        }
+
+        th {
+            color: #34495e;
+            font-weight: 600;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        td:last-child {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 6px 10px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .btn-view {
+            background-color: #2980b9;
+            color: #fff;
+        }
+
+        .btn-activate {
+            background-color: #27ae60;
+            color: #fff;
+        }
+
+        .btn-deactivate {
+            background-color: #f39c12;
+            color: #fff;
+        }
+
+        .btn-delete {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+
+        .btn-create-now {
+            background-color: #8e44ad;
+            color: #fff;
+        }
+
+        form {
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            .top-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .top-actions a {
+                margin-right: 0;
+                width: 100%;
+            }
+            .top-actions button {
+                width: 100%;
+            }
+            table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Task Templates</h2>
+
+<div th:if="${successMessage}"
+     style="
+        margin-bottom: 15px;
+        padding: 10px 14px;
+        background-color: #eafaf1;
+        color: #1e8449;
+        border-radius: 6px;
+        font-weight: 500;
+     "
+     th:text="${successMessage}">
+</div>
+
+<div class="top-actions">
+    <a th:href="@{/template/new}">
+        <button>Create New Template</button>
+    </a>
+
+    <a th:href="@{/auth/dashboard}">
+        <button>Back to Dashboard</button>
+    </a>
+
+    <a th:href="@{/template/due}">
+        <button>Check if any task is due ?</button>
+    </a>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Description</th>
+        <th>Priority</th>
+        <th>Frequency</th>
+        <th>Flash Time</th>
+         <th>Next Run Date</th>
+         <th>Final Date</th>
+
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr th:each="template : ${templates}">
+        <td th:text="${template.id}"></td>
+        <td th:text="${template.title}"></td>
+        <td th:text="${template.description}"></td>
+        <td th:text="${template.priority}"></td>
+        <td th:text="${template.taskFrequency}"></td>
+        <td th:text="${template.flashTime}"></td>
+
+        <!-- 🔹 Shows when the template will next generate a task -->
+         <td th:text="${template.nextRunDate}"></td>
+
+        <!-- 🔹 Template auto-deactivation cutoff date -->
+         <td th:text="${template.finalDate}"></td>
+
+        <td th:text="${template.active ? 'ACTIVE' : 'INACTIVE'}"></td>
+
+        <td>
+
+            <a th:href="@{/template/{id}/view(id=${template.id})}">
+                <button type="button" class="btn-view">View</button>
+            </a>
+
+            <!-- 🔹 Activates template (task creation handled backend-side) -->
+            <form th:if="${!template.active}"
+                  th:action="@{/template/{id}/activate(id=${template.id})}"
+                  method="post">
+                <button type="submit" class="btn-activate">Activate</button>
+            </form>
+
+            <!-- 🔹 Deactivates template to stop future task creation -->
+            <form th:if="${template.active}"
+                  th:action="@{/template/{id}/deactivate(id=${template.id})}"
+                  method="post">
+                <button type="submit" class="btn-deactivate">Deactivate</button>
+            </form>
+
+            <form th:if="${template.active}"
+                  th:action="@{/template/{id}/create-task-now(id=${template.id})}"
+                  method="post">
+                <button type="submit" class="btn-create-now">Create Task Now</button>
+            </form>
+
+            <!-- 🔹 Permanently deletes the template -->
+            <form th:action="@{/template/{id}/delete(id=${template.id})}"
+                  method="post">
+                <button type="submit" class="btn-delete">Delete</button>
+            </form>
+
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

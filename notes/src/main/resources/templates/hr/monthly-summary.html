@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Monthly Out Summary</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 24px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: white;
+            padding: 20px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .back-btn {
+            background: #4a5568;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: #2d3748;
+        }
+
+        /* ===== Cards ===== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+
+        /* ===== Filter Bar ===== */
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            margin-bottom: 16px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: #4a5568;
+        }
+
+        .form-control {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            color: #2d3748;
+            background: white;
+            min-width: 150px;
+        }
+
+        .form-control:focus {
+            border-color: #2e7d32;
+        }
+
+        .btn-filter {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 9px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-filter:hover {
+            background: #1b5e20;
+        }
+
+        /* ===== Search Bar ===== */
+        .search-container {
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 16px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
+        }
+
+        /* ===== Table Panel ===== */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            text-align: left;
+        }
+
+        th {
+            background: #edf2f7;
+            color: #4a5568;
+            font-weight: 700;
+            padding: 14px 16px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #2d3748;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: #f7fafc;
+        }
+
+        .badge-count {
+            background: #e2e8f0;
+            color: #4a5568;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+        }
+
+        .duration-text {
+            font-weight: 700;
+            color: #c53030;
+        }
+
+        .duration-text.zero {
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+            font-size: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .hide-mobile {
+                display: none;
+            }
+            body {
+                padding: 12px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 16px;
+            }
+            .back-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-group {
+                width: 100%;
+            }
+            .form-control {
+                width: 100%;
+            }
+            .btn-filter {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h2>Monthly Out Summary</h2>
+        <a th:href="@{/auth/dashboard}" class="back-btn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Dashboard
+        </a>
+    </div>
+
+    <!-- Filter Control Card -->
+    <div class="card">
+        <div class="card-title">Select Month & Year</div>
+        <form th:action="@{/hr/in-out/monthly-summary}" method="get" class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label" for="month">Month</label>
+                <select name="month" id="month" class="form-control">
+                    <option value="1" th:selected="${selectedMonth == 1}">January</option>
+                    <option value="2" th:selected="${selectedMonth == 2}">February</option>
+                    <option value="3" th:selected="${selectedMonth == 3}">March</option>
+                    <option value="4" th:selected="${selectedMonth == 4}">April</option>
+                    <option value="5" th:selected="${selectedMonth == 5}">May</option>
+                    <option value="6" th:selected="${selectedMonth == 6}">June</option>
+                    <option value="7" th:selected="${selectedMonth == 7}">July</option>
+                    <option value="8" th:selected="${selectedMonth == 8}">August</option>
+                    <option value="9" th:selected="${selectedMonth == 9}">September</option>
+                    <option value="10" th:selected="${selectedMonth == 10}">October</option>
+                    <option value="11" th:selected="${selectedMonth == 11}">November</option>
+                    <option value="12" th:selected="${selectedMonth == 12}">December</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="year">Year</label>
+                <input type="number" name="year" id="year" class="form-control" th:value="${selectedYear}" required />
+            </div>
+
+            <button type="submit" class="btn-filter">Generate Summary</button>
+        </form>
+    </div>
+
+    <!-- Summary Details Card -->
+    <div class="card">
+        <div class="card-title" th:text="${'Employee Summary for ' + #strings.capitalize(#strings.toLowerCase(T(java.time.Month).of(selectedMonth).name())) + ' ' + selectedYear}">
+            Employee Summary for June 2026
+        </div>
+
+        <!-- Search directory -->
+        <div class="search-container">
+            <input type="text" id="employeeSearch" class="search-input" placeholder="Search by name, phone, designation..." onkeyup="filterSummaryTable()" />
+        </div>
+
+        <div class="table-responsive">
+            <table id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
+                        <th>Phone Number</th>
+                        <th class="hide-mobile">Designation</th>
+                        <th>Total Out Entries</th>
+                        <th>Total Time Spent Outside</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${summary}" 
+                        th:data-search="${#strings.toLowerCase(row.employee.name + ' ' + row.employee.phoneNumber + ' ' + (row.employee.roles ?: ''))}">
+                        <td th:text="${row.employee.name}" style="font-weight: 600; color: #1a202c;">John Doe</td>
+                        <td th:text="${row.employee.phoneNumber}">9876543210</td>
+                        <td class="hide-mobile" th:text="${row.employee.roles ?: '-'}">Staff</td>
+                        <td>
+                            <span class="badge-count" th:text="${row.count}">0</span>
+                        </td>
+                        <td>
+                            <span th:class="${row.totalMinutes > 0 ? 'duration-text' : 'duration-text zero'}" 
+                                  th:text="${row.formattedDuration}">0 mins</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(summary)}">
+                        <td colspan="5" class="no-data">No employees registered. Go to Employee Master to upload database.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterSummaryTable() {
+        const input = document.getElementById("employeeSearch");
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById("summaryTable");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            if (tr[i].getElementsByTagName("td").length < 5) continue;
+
+            const row = tr[i];
+            const searchData = row.getAttribute("data-search");
+
+            if (searchData) {
+                if (searchData.indexOf(filter) > -1) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>

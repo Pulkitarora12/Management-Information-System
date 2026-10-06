@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>RMIR Observations</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Layout */
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header Section */
+        .header {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 28px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2 span {
+            color: #4f46e5;
+            font-weight: 700;
+        }
+
+        .observation-icon {
+            width: 32px;
+            height: 32px;
+            color: #4f46e5;
+        }
+
+        /* Back Button */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .btn-secondary:hover {
+            background: #4f46e5;
+            color: white;
+            border-color: #4338ca;
+            transform: translateX(-4px);
+        }
+
+        /* Table Container */
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+        }
+
+        thead th {
+            color: white;
+            padding: 20px 24px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        thead th:not(:first-child) {
+            text-align: center;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+            transform: scale(1.01);
+        }
+
+        tbody td {
+            padding: 20px 24px;
+            color: #374151;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        tbody td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        /* Measurement Badge */
+        .measurement {
+            display: inline-block;
+            padding: 6px 14px;
+            background: #ede9fe;
+            color: #5b21b6;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* GW Sheet Badge */
+        .gw-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+
+            .observation-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 600px;
+            }
+
+            thead th,
+            tbody td {
+                padding: 16px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                padding: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        /*overweight-red*/
+        .gw-badge.overweight {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #fca5a5;
+            position: relative;
+            font-weight: 700;
+        }
+
+        .gw-badge.overweight::after {
+            content: 'Overweight';
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Normal Badge - Keep existing blue */
+        .gw-badge.normal {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>
+            <svg class="observation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            Observations for RMIR Entry #<span th:text="${entryId}"></span>
+        </h2>
+        <a th:href="@{/rmir-entry/getAll}" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to RMIR History
+        </a>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+            <tr>
+                <th>Measurement Type</th>
+                <th>Length (L)</th>
+                <th>Width (W)</th>
+                <th>Thickness (T)</th>
+                <th>GW Sheet</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="obs, iterStat : ${observations}">
+                <td>Observation #<span th:text="${iterStat.count}"></span></td>
+                <td><span class="measurement" th:text="${obs.l}"></span></td>
+                <td><span class="measurement" th:text="${obs.b}"></span></td>
+                <td><span class="measurement" th:text="${obs.h}"></span></td>
+                <td>
+        <span class="gw-badge"
+              th:classappend="${obs.gwSheet > stdGW} ? 'overweight' : 'normal'"
+              th:text="${obs.gwSheet}">
+        </span>
+                </td>
+            </tr>
+
+            <!-- Handle no observations -->
+            <tr th:if="${#lists.isEmpty(observations)}">
+                <td colspan="5">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>No observations available for this entry</p>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>

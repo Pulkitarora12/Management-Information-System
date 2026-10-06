@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>RMIR Entry History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Layout */
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header Section */
+        .header {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 28px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-icon {
+            width: 36px;
+            height: 36px;
+            color: #4f46e5;
+        }
+
+        /* Actions */
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+            border-color: #d1d5db;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+            transform: scale(1.05);
+        }
+
+        /* Table Container */
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        /* Table Wrapper for Scroll */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        thead th {
+            color: white;
+            padding: 18px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        tbody td {
+            padding: 16px;
+            color: #374151;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        /* ID Cell */
+        .id-cell {
+            font-weight: 700;
+            color: #4f46e5;
+            font-size: 15px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px !important;
+            color: #9ca3af;
+            white-space: normal !important;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        /* Action Buttons in Table */
+        tbody .btn {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+
+            .header-icon {
+                width: 30px;
+                height: 30px;
+            }
+
+            .actions {
+                width: 100%;
+            }
+
+            .actions .btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            table {
+                min-width: 1400px;
+            }
+        }
+
+        /* Badge Styles */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .filter-bar {
+            background: white;
+            padding: 22px 24px;
+            margin-bottom: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            align-items: end;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-item label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .filter-item input,
+        .filter-item select {
+            height: 40px;
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .filter-item input:focus,
+        .filter-item select:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-actions button {
+            height: 40px;
+            padding: 0 22px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-actions button:hover {
+            background: #4338ca;
+        }
+
+        .reset-btn {
+            height: 40px;
+            padding: 0 20px;
+            background: #e5e7eb;
+            color: #374151;
+            border-radius: 10px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .reset-btn:hover {
+            background: #d1d5db;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .filter-bar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                padding: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .actions {
+                width: 100%;
+                flex-direction: column;
+            }
+            .actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>
+            <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            RMIR Entry History
+        </h2>
+        <div class="actions">
+            <a th:href="@{/rmir-entry}" class="btn btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Entry
+            </a>
+
+            <a th:href="@{/rmir-entry/export}" class="btn btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+            </a>
+
+            <a th:href="@{/auth/dashboard}" class="btn btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12l9-9 9 9"/>
+                    <path d="M9 21V9h6v12"/>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+
+    </div>
+
+    <form method="get" th:action="@{/rmir-entry/getAll}" class="filter-bar">
+
+        <!-- Month -->
+        <div class="filter-item">
+            <label>Month</label>
+            <select name="month">
+                <option value="">All</option>
+                <option value="1"  th:selected="${month==1}">January</option>
+                <option value="2"  th:selected="${month==2}">February</option>
+                <option value="3"  th:selected="${month==3}">March</option>
+                <option value="4"  th:selected="${month==4}">April</option>
+                <option value="5"  th:selected="${month==5}">May</option>
+                <option value="6"  th:selected="${month==6}">June</option>
+                <option value="7"  th:selected="${month==7}">July</option>
+                <option value="8"  th:selected="${month==8}">August</option>
+                <option value="9"  th:selected="${month==9}">September</option>
+                <option value="10" th:selected="${month==10}">October</option>
+                <option value="11" th:selected="${month==11}">November</option>
+                <option value="12" th:selected="${month==12}">December</option>
+            </select>
+        </div>
+
+        <!-- Date -->
+        <div class="filter-item">
+            <label>Date</label>
+            <input type="date" name="createdDate" th:value="${createdDate}">
+        </div>
+
+        <!-- Part -->
+        <div class="filter-item">
+            <label>Part (No / Name)</label>
+            <input type="text" name="part" th:value="${part}" placeholder="Search part">
+        </div>
+
+        <!-- Supplier -->
+        <div class="filter-item">
+            <label>Supplier</label>
+            <select name="supplier">
+                <option value="">All</option>
+                <option th:each="s : ${suppliers}"
+                        th:value="${s}"
+                        th:text="${s}"
+                        th:selected="${supplier == s}">
+                </option>
+            </select>
+        </div>
+
+        <!-- Grade -->
+<!--        <div class="filter-item">-->
+<!--            <label>Grade</label>-->
+<!--            <select name="grade">-->
+<!--                <option value="">All</option>-->
+<!--                <option th:each="g : ${grades}"-->
+<!--                        th:value="${g}"-->
+<!--                        th:text="${g}"-->
+<!--                        th:selected="${grade == g}">-->
+<!--                </option>-->
+<!--            </select>-->
+<!--        </div>-->
+
+        <!-- Inspector -->
+<!--        <div class="filter-item">-->
+<!--            <label>Inspector</label>-->
+<!--            <select name="inspector">-->
+<!--                <option value="">All</option>-->
+<!--                <option th:each="i : ${inspectors}"-->
+<!--                        th:value="${i}"-->
+<!--                        th:text="${i}"-->
+<!--                        th:selected="${inspector == i}">-->
+<!--                </option>-->
+<!--            </select>-->
+<!--        </div>-->
+
+        <div class="filter-item" style="flex-direction: row; align-items: center; gap: 10px;">
+            <input type="checkbox"
+                   name="overweight"
+                   value="true"
+                   th:checked="${overweight}">
+            <label style="margin: 0;">Overweight Only</label>
+        </div>
+
+        <!-- Actions -->
+        <div class="filter-actions">
+            <button type="submit">Apply</button>
+            <a th:href="@{/rmir-entry/getAll}" class="reset-btn">Reset</a>
+        </div>
+
+    </form>
+
+
+    <div class="table-container">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Part No</th>
+                    <th>Part Name</th>
+                    <th>RM Size</th>
+                    <th>Grade</th>                    <!-- Changed -->
+                    <th>Std GW</th>                   <!-- Changed -->
+                    <th>Bundle Grade</th>
+                    <th>Bundle No</th>
+                    <th>Bundle GW</th>
+                    <th>Bundle NW</th>
+                    <th>Bundle Size</th>
+                    <th>Supplier</th>
+                    <th>Inspector</th>
+                    <th>Remarks</th>
+                    <th>Created Date</th>
+                    <th>Created Time</th>
+                    <th>Observations</th>
+                    <th sec:authorize="hasRole('ADMIN')">Delete</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="entry : ${entries}">
+                    <td class="id-cell" th:text="${entry.id}"></td>
+                    <td th:text="${entry.partNo}"></td>
+                    <td th:text="${entry.partName}"></td>
+                    <td th:text="${entry.rmSize}"></td>
+                    <td th:text="${entry.grade}"></td>           <!-- Changed -->
+                    <td th:text="${entry.stdGW}"></td>           <!-- Changed -->
+                    <td th:text="${entry.bundleGrade}"></td>
+                    <td th:text="${entry.bundleNo}"></td>
+                    <td th:text="${entry.bundleGW}"></td>
+                    <td th:text="${entry.bundleNW}"></td>
+                    <td th:text="${entry.bundleSize}"></td>
+                    <td th:text="${entry.supplier}"></td>
+                    <td th:text="${entry.inspector}"></td>
+                    <td th:text="${entry.remarks}"></td>
+                    <td th:text="${entry.createdDate}"></td>
+                    <td th:text="${entry.createdTime}"></td>
+
+                    <!-- Observation Button -->
+                    <td>
+                        <a th:href="@{/rmir-entry/{id}/observations(id=${entry.id})}"
+                           class="btn btn-primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            View
+                        </a>
+                    </td>
+
+                    <!-- Delete Only Visible to Admin -->
+                    <td sec:authorize="hasRole('ADMIN')">
+                        <a th:href="@{/rmir-entry/{id}/delete(id=${entry.id})}"
+                           onclick="return confirm('Are you sure you want to delete this entry?');"
+                           class="btn btn-danger">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                            Delete
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Empty state -->
+                <tr th:if="${#lists.isEmpty(entries)}">
+                    <td colspan="16" class="empty-state">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 20px;">
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <h3>No entries found</h3>
+                        <p>Start by creating your first RMIR entry</p>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===== Page Base ===== */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            padding: 16px;
+
+            font-size: 14px; /* ⬅️ add this */
+        }
+
+        /* ===== Container ===== */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: white;
+            padding: 16px 22px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            color: #1a202c;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* ===== Header Actions ===== */
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .change-password-btn {
+            background: #1976d2;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .change-password-btn:hover {
+            background: #1565c0;
+        }
+
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .logout-btn:hover {
+            background: #c53030;
+        }
+
+        /* ===== Main Layout ===== */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+
+        /* ===== Modules Grid ===== */
+        .modules-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        /* ===== Module Card ===== */
+        .module-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 18px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .module-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .module-icon {
+            width: 42px;
+            height: 42px;
+            background: #1976d2;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .module-icon svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+
+        .module-card h3 {
+            color: #1a202c;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .module-card p {
+            color: #718096;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+
+        /* ===== Module Buttons ===== */
+        .module-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .module-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .module-btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+
+        .module-btn-primary:hover {
+            background: #1565c0;
+        }
+
+        .module-btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .module-btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ===== Cards ===== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 18px;
+        }
+
+        .card h3 {
+            color: #2d3748;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        /* ===== Account Table ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 6px 0;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        th {
+            color: #718096;
+            font-weight: 600;
+            width: 45%;
+        }
+
+        td {
+            color: #2d3748;
+        }
+
+        tr:last-child td,
+        tr:last-child th {
+            border-bottom: none;
+        }
+
+        /* ===== Admin Panel ===== */
+        .admin-panel {
+            background: #1976d2;
+            color: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-panel h3 {
+            color: white;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .admin-panel ul {
+            list-style: none;
+        }
+
+        .admin-panel li {
+            margin-bottom: 8px;
+        }
+
+        .admin-panel a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: inline-block;
+            font-size: 13px;
+        }
+
+        .admin-panel a:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .modules-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                padding: 16px;
+            }
+            .header-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            .change-password-btn, .logout-btn {
+                width: 100%;
+                text-align: center;
+            }
+            .module-card {
+                padding: 12px;
+            }
+            .module-actions {
+                flex-direction: column;
+            }
+            .module-btn {
+                width: 100%;
+                text-align: center;
+            }
+            table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="header">
+        <h2>Welcome, <span th:text="${loggedInUser.userName}"></span>!</h2>
+        <div class="header-actions">
+            <a th:href="@{/auth/change-password}" class="change-password-btn">Change Password</a>
+            <a th:href="@{/logout}" class="logout-btn">Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Left Side: Module Cards -->
+        <div class="modules-section">
+            <!-- Production Module -->
+            <div class="module-card">
+                <div class="module-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                </div>
+                <h3>Production</h3>
+                <p>Daily production entry, shift logs, and efficiency reports.</p>
+                <div class="module-actions">
+                    <a th:href="@{/production-entry}" class="module-btn module-btn-primary">Entry</a>
+                    <a th:href="@{/production-entry/getAll}" class="module-btn module-btn-secondary">View Production History</a>
+                </div>
+            </div>
+
+            <!-- RMIR & Quality Module -->
+            <div class="module-card">
+                <div class="module-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3>RMIR & Quality</h3>
+                <p>Raw Material Inspection Reports and Quality Observations.</p>
+                <div class="module-actions">
+                    <a th:href="@{/rmir-entry}" class="module-btn module-btn-primary">New RMIR</a>
+                    <a th:href="@{/rmir-entry/getAll}" class="module-btn module-btn-secondary">View RMIR History</a>
+                </div>
+            </div>
+
+            <!-- Generic Masters Module -->
+            <div class="module-card">
+                <div class="module-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h3>Generic Masters</h3>
+                <p>Manage custom data templates for multiple system modules.</p>
+                <div class="module-actions">
+                    <a th:href="@{/masters}" class="module-btn module-btn-primary">Master List</a>
+                    <a th:href="@{/masters/new}" class="module-btn module-btn-secondary">Create Master</a>
+                </div>
+            </div>
+
+            <!-- HR Module -->
+            <div class="module-card">
+                <div class="module-icon" style="background: #2e7d32;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <h3>HR Module</h3>
+                <p>Manage employee database, imports, document uploads, and records.</p>
+                <div class="module-actions">
+                    <a th:href="@{/hr/employee-master}" class="module-btn" style="background: #2e7d32; color: white;">Employee Master</a>
+                    <a th:href="@{/hr/in-out}" class="module-btn module-btn-secondary">In & Out Logs</a>
+                    <a th:href="@{/hr/in-out/monthly-summary}" class="module-btn module-btn-secondary">Monthly Summary</a>
+                </div>
+            </div>
+
+            <!-- Task Management Module -->
+            <div class="module-card">
+                <div class="module-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 12h6M9 16h6M9 20h2" />
+                    </svg>
+                </div>
+                <h3>Task Management</h3>
+                <p>Create, assign, and track tasks across teams and projects.</p>
+                <div class="module-actions">
+                    <a th:href="@{/tasks/new}" class="module-btn module-btn-primary">
+                        Create Task
+                    </a>
+
+                    <a th:href="@{/tasks}" class="module-btn module-btn-secondary">
+                        Manage Task
+                    </a>
+
+                    <a th:if="${loggedInUser != null and loggedInUser.isAdmin()}"
+                       th:href="@{/template}"
+                       class="module-btn module-btn-secondary">
+                        Manage Templates
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Side: User Details & Admin Panel -->
+        <div class="sidebar">
+            <div class="card">
+                <h3>Account Information</h3>
+                <table>
+                    <tr><th>User ID</th> <td th:text="${loggedInUser.userId}">12345</td></tr>
+                    <tr><th>Username</th> <td th:text="${loggedInUser.userName}">admin</td></tr>
+                    <tr><th>Email</th> <td th:text="${loggedInUser.email}">admin@example.com</td></tr>
+                    <tr><th>Employee Name</th> <td th:text="${loggedInUser.employeeFullName}">John Doe</td></tr>
+                    <tr><th>Department</th> <td th:text="${loggedInUser.employeeDepartment}">Production</td></tr>
+                    <tr><th>Phone</th> <td th:text="${loggedInUser.employeePhone}">9876543210</td></tr>
+                    <tr><th>Role</th> <td th:text="${loggedInUser.role.roleName}">ADMIN</td></tr>
+                    <tr><th>Created</th> <td th:text="${loggedInUser.createdDate}">2024-01-01</td></tr>
+                </table>
+            </div>
+
+            <div th:if="${loggedInUser.role.roleName.toString() == 'ROLE_ADMIN'}" class="admin-panel">
+                <h3>Admin Panel</h3>
+                <ul>
+                    <li><a th:href="@{/admin/users}">View All Users</a></li>
+                    <li><a th:href="@{/admin/update-role}">Update User Role</a></li>
+                    <li><a th:href="@{/admin/register-employee}">Register Employee</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

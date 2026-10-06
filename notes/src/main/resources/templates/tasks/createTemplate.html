@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Create Task Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            background-color: #f5f7fa;
+            padding: 40px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            padding: 25px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #34495e;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 8px 10px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background-color: #27ae60;
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background-color: #7f8c8d;
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* ===== RULE PANEL ===== */
+
+        .rules h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .rules p {
+            font-size: 14px;
+            color: #2f3640;
+            line-height: 1.6;
+        }
+
+        .rules ul {
+            padding-left: 18px;
+            margin-top: 6px;
+            margin-bottom: 14px;
+        }
+
+        .rules li {
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .highlight {
+            font-weight: 600;
+            color: #c0392b;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+            .form-actions {
+                flex-direction: column;
+            }
+            .btn-primary, .btn-secondary {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Create Task Template</h2>
+
+<div class="layout">
+
+    <!-- ================= LEFT : FORM ================= -->
+    <div class="card">
+        <form th:action="@{/template/new}"
+              th:object="${templateDTO}"
+              method="post">
+
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" th:field="*{title}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea th:field="*{description}" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Priority</label>
+                <select th:field="*{priority}" required>
+                    <option value="">-- Select --</option>
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Task Frequency</label>
+                <select th:field="*{taskFrequency}" required>
+                    <option value="">-- Select --</option>
+                    <option value="DAILY">DAILY</option>
+                    <option value="WEEKLY">WEEKLY</option>
+                    <option value="MONTHLY">MONTHLY</option>
+                    <option value="QUARTERLY">QUARTERLY</option>
+                    <option value="YEARLY">YEARLY</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Recurrence Day</label>
+                <input type="number" th:field="*{recurrenceDay}" min="1" max="31">
+            </div>
+
+            <div class="form-group">
+                <label>Recurrence Month (Yearly)</label>
+                <input type="number" th:field="*{recurrenceMonth}" min="1" max="12">
+            </div>
+
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" th:field="*{startDate}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Final Date</label>
+                <input type="date" th:field="*{finalDate}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Main Assignee</label>
+                <select th:field="*{mainAssigneeId}" required>
+                    <option value="">-- Select --</option>
+                    <option th:each="user : ${users}"
+                            th:value="${user.userId}"
+                            th:text="${user.userName}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Supporting Assignees</label>
+                <select th:field="*{supportingAssigneeIds}" multiple size="5" required>
+                    <option th:each="user : ${users}"
+                            th:value="${user.userId}"
+                            th:text="${user.userName}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Flash Time (days)</label>
+                <input type="number" th:field="*{flashTime}" min="0" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Create Template</button>
+                <a th:href="@{/template}">
+                    <button type="button" class="btn-secondary">Cancel</button>
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- ================= RIGHT : RULES ================= -->
+    <div class="card rules">
+        <h3>📘 Mandatory Rules</h3>
+
+        <p class="highlight">All fields on this form are mandatory.</p>
+
+        <p>Fill <b>Recurrence Day</b> and <b>Recurrence Month</b> strictly according to the selected frequency.</p>
+
+        <h4>Frequency Rules</h4>
+
+        <p><b>DAILY</b></p>
+        <ul>
+            <li>Do not use Recurrence Day</li>
+            <li>Do not use Recurrence Month</li>
+        </ul>
+
+        <p><b>WEEKLY</b></p>
+        <ul>
+            <li>Recurrence Day: 1–7 (Monday–Sunday)</li>
+            <li>Recurrence Month: Not allowed</li>
+        </ul>
+
+        <p><b>MONTHLY / QUARTERLY</b></p>
+        <ul>
+            <li>Recurrence Day: 1–31</li>
+            <li>Recurrence Month: Not allowed</li>
+        </ul>
+
+        <p><b>YEARLY</b></p>
+        <ul>
+            <li>Recurrence Day: 1–31</li>
+            <li>Recurrence Month: 1–12 (January–December)</li>
+        </ul>
+
+        <h4>Date Logic</h4>
+        <ul>
+            <li>If Start Date = today → task is created immediately</li>
+            <li>No task is created after Final Date</li>
+            <li>Flash Time controls how many days before due date the task is generated</li>
+        </ul>
+    </div>
+
+</div>
+
+</body>
+</html>

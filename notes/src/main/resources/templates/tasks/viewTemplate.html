@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>View Task Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            background-color: #f5f7fa;
+            padding: 40px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: #ffffff;
+            max-width: 700px;
+            border-radius: 10px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            width: 35%;
+            color: #34495e;
+            padding: 10px;
+            background-color: #f0f2f5;
+        }
+
+        td {
+            padding: 10px;
+            color: #2c3e50;
+        }
+
+        tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-active {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .status-inactive {
+            color: #c0392b;
+            font-weight: 600;
+        }
+
+        .actions {
+            margin-top: 20px;
+        }
+
+        .actions a {
+            text-decoration: none;
+        }
+
+        .actions button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+            .card {
+                padding: 12px;
+            }
+            table tr {
+                display: flex;
+                flex-direction: column;
+                margin-bottom: 8px;
+            }
+            th {
+                width: 100% !important;
+                background-color: transparent !important;
+                padding-bottom: 2px !important;
+            }
+            td {
+                padding-top: 2px !important;
+            }
+            .actions {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .actions button {
+                width: 100%;
+                margin-left: 0 !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Task Template Details</h2>
+
+<div class="card">
+    <table>
+
+        <tr>
+            <th>ID</th>
+            <td th:text="${taskTemplate.id}"></td>
+        </tr>
+
+        <tr>
+            <th>Title</th>
+            <td th:text="${taskTemplate.title}"></td>
+        </tr>
+
+        <tr>
+            <th>Description</th>
+            <td th:text="${taskTemplate.description}"></td>
+        </tr>
+
+        <tr>
+            <th>Priority</th>
+            <td th:text="${taskTemplate.priority}"></td>
+        </tr>
+
+        <tr>
+            <th>Task Frequency</th>
+            <td th:text="${taskTemplate.taskFrequency}"></td>
+        </tr>
+
+        <tr>
+            <th>Flash Time</th>
+            <td th:text="${taskTemplate.flashTime}"></td>
+        </tr>
+
+        <!-- 🔹 ADDED: Start date of the template (from creation rules / DTO mapping) -->
+        <tr>
+            <th>Start Date</th>
+            <td th:text="${taskTemplate.startDate} ?: 'N/A'"></td>
+        </tr>
+
+        <!-- 🔹 ADDED: Next scheduled task creation date -->
+        <tr>
+            <th>Next Task Occurrence</th>
+            <td th:text="${taskTemplate.nextRunDate} ?: 'Not Scheduled'"></td>
+        </tr>
+
+        <tr>
+            <th>Status</th>
+            <td th:class="${taskTemplate.active ? 'status-active' : 'status-inactive'}"
+                th:text="${taskTemplate.active ? 'ACTIVE' : 'INACTIVE'}">
+            </td>
+        </tr>
+
+        <tr>
+            <th>Created At</th>
+            <td th:text="${taskTemplate.createdAt}"></td>
+        </tr>
+
+        <tr>
+            <th>Creator ID</th>
+            <td th:text="${taskTemplate.creator != null ? taskTemplate.creator.userId : 'N/A'}"></td>
+        </tr>
+
+        <tr>
+            <th>Main Assignee</th>
+            <td th:text="${taskTemplate.mainAssignee != null
+                    ? taskTemplate.mainAssignee.userName
+                    : 'Not Assigned'}">
+            </td>
+        </tr>
+
+        <tr>
+            <th>Supporting Assignees</th>
+            <td>
+                <span th:if="${taskTemplate.assignees == null
+                              || #lists.isEmpty(taskTemplate.assignees)}">
+                    None
+                </span>
+
+                <ul th:if="${taskTemplate.assignees != null
+                            && !#lists.isEmpty(taskTemplate.assignees)}"
+                    style="margin:0; padding-left:18px;">
+                    <li th:each="user : ${taskTemplate.assignees}"
+                        th:text="${user.userName}">
+                    </li>
+                </ul>
+            </td>
+        </tr>
+
+    </table>
+
+    <div class="actions">
+        <a th:href="@{/template}">
+            <button>Back to Template List</button>
+        </a>
+
+        <a th:if="${taskTemplate.active}"
+           th:href="@{/template/{id}/tasks(id=${taskTemplate.id})}">
+            <button style="margin-left:10px;">
+                📋 View Tasks from Template
+            </button>
+        </a>
+    </div>
+</div>
+
+</body>
+</html>
