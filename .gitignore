@@ -15,3 +15,4 @@ target/
 *.log
 
 /notes/src/main/resources/google-sheets-api-key.json
+.DS_Store
