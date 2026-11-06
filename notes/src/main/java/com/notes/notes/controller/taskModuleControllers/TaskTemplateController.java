@@ -8,6 +8,7 @@
     import com.notes.notes.service.authServices.UserService;
     import com.notes.notes.service.taskModuleServices.TaskService;
     import com.notes.notes.service.taskModuleServices.TaskTemplateService;
+    import org.springframework.security.access.prepost.PreAuthorize;
     import org.springframework.stereotype.Controller;
     import org.springframework.transaction.annotation.Transactional;
     import org.springframework.ui.Model;
@@ -108,18 +109,12 @@
             return "tasks/viewTemplate";
         }
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','ADMIN')")
         @GetMapping("/{id}/tasks")
         public String viewTasksCreatedFromTemplate(
                 @PathVariable Long id,
-                Model model,
-                @ModelAttribute("loggedInUser") User loggedInUser
+                Model model
         ) {
-
-            // 🔒 ADMIN CHECK
-            if (!loggedInUser.isAdmin()) {
-                throw new SecurityException("Access denied");
-            }
-
             TaskTemplate template = taskTemplateService.findById(id);
 
             List<Task> tasks = taskService.getTasksByTemplate(template);

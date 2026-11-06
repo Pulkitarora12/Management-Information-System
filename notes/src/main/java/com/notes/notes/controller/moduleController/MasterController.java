@@ -70,7 +70,7 @@ public class MasterController {
     }
 
     @PostMapping("/{id}/delete")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("@authz.can('MASTERS','DELETE')")
     public String deleteMaster(@PathVariable Long id) {
         masterService.deleteMaster(id);
         return "redirect:/masters";

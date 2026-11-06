@@ -419,7 +419,7 @@
                 <th>Time Slots</th>
                 <th>Downtime</th>
                 <th>Inspector</th>
-                <th sec:authorize="hasRole('ADMIN')">Delete</th>
+                <th sec:authorize="@authz.can('PRODUCTION','DELETE')">Delete</th>
             </tr>
             </thead>
             <tbody>
@@ -456,7 +456,7 @@
                 <td th:text="${entry.inspector}"></td>
 
                 <!-- Delete Column (ADMIN only) -->
-                <td sec:authorize="hasRole('ADMIN')">
+                <td sec:authorize="@authz.can('PRODUCTION','DELETE')">
                     <a th:href="@{/production-entry/{id}/delete(id=${entry.id})}"
                        class="btn btn-secondary"
                        style="background-color:#d32f2f;">Delete</a>

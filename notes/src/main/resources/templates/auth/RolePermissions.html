@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Role Permissions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/output.css}">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8; min-height: 100vh; padding: 40px 20px;
+        }
+        .container { max-width: 960px; margin: 0 auto; }
+        .header { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        h2 { color: #1a202c; font-size: 26px; font-weight: 700; }
+        .role-key { font-family: monospace; color: #718096; font-size: 13px; margin-top: 4px; }
+        .success-message {
+            background: #c6f6d5; border: 1px solid #9ae6b4; color: #22543d;
+            padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-weight: 500;
+        }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 10px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 640px; }
+        th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        th { color: #718096; font-size: 12px; text-transform: uppercase; }
+        td.resource-name { font-weight: 600; color: #1a202c; }
+        select {
+            padding: 6px 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 13px;
+            background: #f7fafc; color: #2d3748;
+        }
+        .actions { margin-top: 20px; text-align: right; }
+        button[type="submit"] {
+            padding: 12px 24px; background: #667eea; color: white; border: none;
+            border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        button[type="submit"]:hover { background: #5568d3; }
+        .back-link-container { text-align: center; margin-top: 16px; }
+        .back-link { color: #667eea; text-decoration: none; font-weight: 500; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${role.name}"></h2>
+        <div class="role-key" th:text="${role.roleKey}"></div>
+    </div>
+
+    <div th:if="${param.success}" class="success-message">Permissions saved.</div>
+
+    <form th:action="@{/admin/roles/{id}/permissions(id=${role.id})}" method="post">
+        <div class="card">
+            <table>
+                <thead>
+                <tr>
+                    <th>Resource</th>
+                    <th th:each="cell : ${grid.rows[0].cells}" th:text="${cell.actionName}"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${grid.rows}">
+                    <td class="resource-name" th:text="${row.resourceName}"></td>
+                    <td th:each="cell : ${row.cells}">
+                        <select th:name="${'perm_' + cell.permissionId}">
+                            <option value="" th:selected="${cell.scope.name() == 'NONE'}">None</option>
+                            <option value="OWN" th:selected="${cell.scope.name() == 'OWN'}">Own</option>
+                            <option value="ALL" th:selected="${cell.scope.name() == 'ALL'}">All</option>
+                        </select>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="actions">
+            <button type="submit">Save Permissions</button>
+        </div>
+    </form>
+
+    <div class="back-link-container">
+        <a th:href="@{/admin/roles}" class="back-link">Back to Roles</a>
+    </div>
+</div>
+</body>
+</html>

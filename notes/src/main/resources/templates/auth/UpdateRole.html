@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <title>Update User Role</title>
+    <title>Assign User Roles</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/output.css}">
     <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
@@ -52,57 +52,55 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            margin-bottom: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
         }
 
-        .form-group {
-            margin-bottom: 24px;
+        .user-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
-        label {
-            display: block;
-            color: #4a5568;
+        .user-info {
+            min-width: 220px;
+        }
+
+        .user-info .name {
             font-weight: 600;
+            color: #1a202c;
+        }
+
+        .user-info .email {
+            color: #718096;
+            font-size: 13px;
+        }
+
+        .roles {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .role-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            background: #f7fafc;
-            color: #2d3748;
-        }
-
-        input[type="number"]:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        select {
-            cursor: pointer;
+            color: #4a5568;
         }
 
         button[type="submit"] {
-            width: 100%;
-            padding: 14px;
+            padding: 8px 18px;
             background: #667eea;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
         }
 
         button[type="submit"]:hover {
@@ -115,75 +113,53 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 10px;
         }
 
         .back-link {
             color: #667eea;
             text-decoration: none;
             font-weight: 500;
-            transition: color 0.3s ease;
         }
 
         .back-link:hover {
-            color: #5568d3;
             text-decoration: underline;
-        }
-
-        @media (max-width: 768px) {
-            h2 {
-                font-size: 24px;
-            }
-
-            .card {
-                padding: 24px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 16px 12px;
-            }
-            .header, .card, .back-link-container {
-                padding: 16px;
-            }
-            .back-link {
-                width: 100%;
-                text-align: center;
-                display: block;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2>Update User Role</h2>
+            <h2>Assign User Roles</h2>
         </div>
 
-        <div class="card">
-            <div th:if="${success}" class="success-message">
-                <p th:text="${success}"></p>
-            </div>
+        <div th:if="${success}" class="success-message">
+            <p th:text="${success}"></p>
+        </div>
 
+        <div class="card" th:each="u : ${users}">
             <form th:action="@{/admin/update-role}" method="post">
-                <div class="form-group">
-                    <label>User ID</label>
-                    <input type="number" name="userId" required placeholder="Enter user ID">
+                <input type="hidden" name="userId" th:value="${u.userId}">
+                <div class="user-row">
+                    <div class="user-info">
+                        <div class="name" th:text="${u.employeeFullName != null ? u.employeeFullName : u.userName}"></div>
+                        <div class="email" th:text="${u.email}"></div>
+                    </div>
+                    <div class="roles">
+                        <label class="role-checkbox" th:each="r : ${allRoles}">
+                            <input type="checkbox" name="roleIds" th:value="${r.id}"
+                                   th:checked="${assignedRoleIdsByUser.get(u.userId) != null and assignedRoleIdsByUser.get(u.userId).contains(r.id)}">
+                            <span th:text="${r.name}"></span>
+                        </label>
+                    </div>
+                    <button type="submit">Save</button>
                 </div>
-
-                <div class="form-group">
-                    <label>Role</label>
-                    <select name="roleName">
-                        <option value="ROLE_USER">USER</option>
-                        <option value="ROLE_ADMIN">ADMIN</option>
-                    </select>
-                </div>
-
-                <button type="submit">Update Role</button>
             </form>
         </div>
 
         <div class="back-link-container">
+            <a th:href="@{/admin/roles}" class="back-link">Manage Roles &amp; Permissions</a>
+            &nbsp;|&nbsp;
             <a th:href="@{/auth/dashboard}" class="back-link">Back to Dashboard</a>
         </div>
     </div>

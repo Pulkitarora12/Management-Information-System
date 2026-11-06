@@ -2,6 +2,9 @@ package com.notes.notes.controller.authController;
 
 import com.notes.notes.entity.authEntities.User;
 import com.notes.notes.entity.authEntities.VerificationToken;
+import com.notes.notes.rbac.entity.RbacRole;
+import com.notes.notes.rbac.service.RoleService;
+import com.notes.notes.rbac.service.UserRoleAssignmentService;
 import com.notes.notes.repository.authRepo.UserRepository;
 import com.notes.notes.repository.authRepo.VerificationTokenRepository;
 import com.notes.notes.security.request.SignupRequest;
@@ -14,11 +17,13 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Controller
 @RequestMapping("/admin")
-@PreAuthorize("hasRole('ROLE_ADMIN')")
+@PreAuthorize("@authz.can('USERS','ADMIN')")
 public class AdminController {
     @Autowired
     UserRepository userRepository;
@@ -31,6 +36,12 @@ public class AdminController {
 
     @Autowired
     GoogleSheetsService googleSheetsService;
+
+    @Autowired
+    RoleService roleService;
+
+    @Autowired
+    UserRoleAssignmentService userRoleAssignmentService;
 
     @GetMapping("/users")
     public String viewAllUsers(Model model) {
@@ -46,17 +57,29 @@ public class AdminController {
     }
 
     @GetMapping("/update-role")
-    public String showUpdateRolePage() {
+    public String showUpdateRolePage(@RequestParam(required = false) String success, Model model) {
+        if (success != null) {
+            model.addAttribute("success", "User roles updated successfully");
+        }
+        List<User> users = userService.getAllUsers();
+        List<RbacRole> allRoles = roleService.listRoles();
+        model.addAttribute("users", users);
+        model.addAttribute("allRoles", allRoles);
+        model.addAttribute("assignedRoleIdsByUser", users.stream().collect(
+                java.util.stream.Collectors.toMap(
+                        User::getUserId,
+                        u -> userRoleAssignmentService.getRolesForUser(u.getUserId()).stream()
+                                .map(RbacRole::getId).collect(java.util.stream.Collectors.toSet()))));
         return "auth/UpdateRole"; // admin-update-role.html
     }
 
     @PostMapping("/update-role")
     public String updateUserRole(@RequestParam Long userId,
-                                 @RequestParam String roleName,
+                                 @RequestParam(required = false) List<Long> roleIds,
                                  Model model) {
-        userService.updateUserRole(userId, roleName);
-        model.addAttribute("success", "User role updated successfully");
-        return "auth/UpdateRole";
+        Set<Long> selected = roleIds == null ? new HashSet<>() : new HashSet<>(roleIds);
+        userRoleAssignmentService.setRolesForUser(userId, selected);
+        return "redirect:/admin/update-role?success";
     }
 
     @PostMapping("/delete/{userId}")

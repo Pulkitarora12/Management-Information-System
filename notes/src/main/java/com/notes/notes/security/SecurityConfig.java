@@ -3,6 +3,7 @@ package com.notes.notes.security;
 import com.notes.notes.entity.authEntities.AppRole;
 import com.notes.notes.entity.authEntities.Role;
 import com.notes.notes.entity.authEntities.User;
+import com.notes.notes.rbac.service.UserRoleAssignmentService;
 import com.notes.notes.repository.authRepo.RoleRepository;
 import com.notes.notes.repository.authRepo.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -16,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
@@ -37,7 +39,8 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(requests -> requests
                 .requestMatchers("/auth/**", "/verification/**", "/api/csrf-token", "/logout").permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**").access(new WebExpressionAuthorizationManager(
+                        "@authz.can('USERS','ADMIN') or @authz.can('ROLES','ADMIN') or @authz.can('FORM_BUILDER','ADMIN')"))
                 .anyRequest().authenticated()
         );
 
@@ -83,7 +86,8 @@ public class SecurityConfig {
     @Bean
     public CommandLineRunner createAdminUser(UserRepository userRepository,
                                              RoleRepository roleRepository,
-                                             PasswordEncoder passwordEncoder) {
+                                             PasswordEncoder passwordEncoder,
+                                             UserRoleAssignmentService userRoleAssignmentService) {
         return args -> {
 
             String adminEmail = "info@supermetal.co.in";
@@ -124,7 +128,8 @@ public class SecurityConfig {
             admin.setEmployeeDepartment("Management");
             admin.setEmployeePhone("9990627700");
 
-            userRepository.save(admin);
+            User savedAdmin = userRepository.save(admin);
+            userRoleAssignmentService.syncFromLegacyRole(savedAdmin);
         };
     }
 

@@ -209,7 +209,7 @@ public class RMIRController {
         return "user/rmir_observations"; // Make this page
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@authz.can('RMIR','DELETE')")
     @GetMapping("/{id}/delete")
     public String deleteRMIR(@PathVariable Long id, RedirectAttributes redirectAttributes) {
 

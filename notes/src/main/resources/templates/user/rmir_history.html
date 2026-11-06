@@ -509,7 +509,7 @@
                     <th>Created Date</th>
                     <th>Created Time</th>
                     <th>Observations</th>
-                    <th sec:authorize="hasRole('ADMIN')">Delete</th>
+                    <th sec:authorize="@authz.can('RMIR','DELETE')">Delete</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -544,7 +544,7 @@
                     </td>
 
                     <!-- Delete Only Visible to Admin -->
-                    <td sec:authorize="hasRole('ADMIN')">
+                    <td sec:authorize="@authz.can('RMIR','DELETE')">
                         <a th:href="@{/rmir-entry/{id}/delete(id=${entry.id})}"
                            onclick="return confirm('Are you sure you want to delete this entry?');"
                            class="btn btn-danger">

@@ -192,7 +192,7 @@ public class ProductionEntryController {
         return "user/downtime";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@authz.can('PRODUCTION','DELETE')")
     @GetMapping("/{id}/delete")
     public String deleteEntry(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
