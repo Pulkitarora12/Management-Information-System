@@ -487,6 +487,16 @@
 
     form.addEventListener('submit', function (e) {
 
+        // ✅ Check if 'From Time' is less than 'To Time'
+        const fromTime = document.querySelector('input[name="timeSlot.fromTime"]').value;
+        const toTime = document.querySelector('input[name="timeSlot.toTime"]').value;
+
+        if (fromTime && toTime && fromTime >= toTime) {
+            e.preventDefault();
+            alert('From Time must be earlier than To Time.');
+            return;
+        }
+
         const rejected = document.querySelector('input[name="timeSlot.rejected"]').value;
         const reason = document.querySelector('select[name="timeSlot.reason"]').value;
 
@@ -508,7 +518,7 @@
             }
         }
 
-        // ✅ Disable button ONLY after validation passes
+        // ✅ Disable button ONLY after all validations pass
         submitBtn.disabled = true;
         submitBtn.innerText = "Submitting...";
         submitBtn.style.opacity = "0.7";

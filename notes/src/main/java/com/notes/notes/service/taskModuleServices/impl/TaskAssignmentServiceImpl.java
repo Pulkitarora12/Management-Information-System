@@ -7,11 +7,14 @@ import com.notes.notes.entity.taskModuleEntities.TaskAssignment;
 import com.notes.notes.repository.taskModuleRepositories.TaskAssignmentRepository;
 import com.notes.notes.service.emailService.EmailService;
 import com.notes.notes.service.taskModuleServices.TaskAssignmentService;
+import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class TaskAssignmentServiceImpl implements TaskAssignmentService {
 
@@ -78,11 +81,17 @@ public class TaskAssignmentServiceImpl implements TaskAssignmentService {
             String email = user.getEmail();
 
             if (email != null && !email.isBlank()) {
-                emailService.sendTaskAssignmentNotification(
-                        email,
-                        task,
-                        TaskAssignment.AssignmentRole.MAIN_ASSIGNEE
-                );
+                try {
+                    emailService.sendTaskAssignmentNotification(
+                            email,
+                            task,
+                            TaskAssignment.AssignmentRole.MAIN_ASSIGNEE
+                    );
+                } catch (MailException e) {
+                    // Mail failure must not roll back or fail the assignment
+                    log.error("Failed to send assignment email to userId={} for taskId={}: {}",
+                            user.getUserId(), task.getTaskId(), e.getMessage());
+                }
             }
         }
 
@@ -103,22 +112,25 @@ public class TaskAssignmentServiceImpl implements TaskAssignmentService {
         assignment.setUser(user);
         assignment.setRoleType(TaskAssignment.AssignmentRole.SUPPORTING);
 
-        TaskAssignment savedAssignment =
-                taskAssignmentRepository.save(assignment);
+        TaskAssignment savedAssignment = taskAssignmentRepository.save(assignment);
 
-        // Notify newly assigned user
         User creator = task.getCreator();
 
         if (!user.getUserId().equals(creator.getUserId())) {
-
             String email = user.getEmail();
 
             if (email != null && !email.isBlank()) {
-                emailService.sendTaskAssignmentNotification(
-                        email,
-                        task,
-                        TaskAssignment.AssignmentRole.SUPPORTING
-                );
+                try {
+                    emailService.sendTaskAssignmentNotification(
+                            email,
+                            task,
+                            TaskAssignment.AssignmentRole.SUPPORTING
+                    );
+                } catch (MailException e) {
+                    // Mail failure must not roll back or fail the assignment
+                    log.error("Failed to send assignment email to userId={} for taskId={}: {}",
+                            user.getUserId(), task.getTaskId(), e.getMessage());
+                }
             }
         }
 
