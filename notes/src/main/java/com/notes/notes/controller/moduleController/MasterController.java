@@ -27,6 +27,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/masters")
+@PreAuthorize("@authz.can('MASTERS','VIEW')")
 public class MasterController {
 
     @Autowired

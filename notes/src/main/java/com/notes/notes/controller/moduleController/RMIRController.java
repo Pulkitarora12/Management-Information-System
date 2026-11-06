@@ -219,6 +219,8 @@ public class RMIRController {
                     "success",
                     "RMIR entry deleted successfully!"
             );
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
         } catch (IllegalStateException e) {
             redirectAttributes.addFlashAttribute(
                     "error",

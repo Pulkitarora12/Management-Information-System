@@ -201,6 +201,8 @@ public class ProductionEntryController {
                     "success",
                     "Production entry deleted successfully!"
             );
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
         } catch (IllegalStateException e) {
             redirectAttributes.addFlashAttribute(
                     "error",

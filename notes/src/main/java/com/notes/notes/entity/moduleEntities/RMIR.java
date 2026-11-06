@@ -1,5 +1,6 @@
 package com.notes.notes.entity.moduleEntities;
 
+import com.notes.notes.entity.authEntities.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -38,6 +39,10 @@ public class RMIR {
 
     @Column(nullable = true)
     private LocalTime createdTime;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 
     @OneToMany(mappedBy = "rmir", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Observation> observations = new ArrayList<>();

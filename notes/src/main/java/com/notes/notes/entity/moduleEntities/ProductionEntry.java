@@ -1,5 +1,6 @@
 package com.notes.notes.entity.moduleEntities;
 
+import com.notes.notes.entity.authEntities.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,6 +34,10 @@ public class ProductionEntry {
     private String remarks;
     private String sheetSize;
     private String inspector;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 
     // Single TimeSlot instead of List
     @OneToOne(mappedBy = "productionEntry", cascade = CascadeType.ALL, orphanRemoval = true)

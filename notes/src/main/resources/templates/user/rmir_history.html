@@ -544,7 +544,7 @@
                     </td>
 
                     <!-- Delete Only Visible to Admin -->
-                    <td sec:authorize="@authz.can('RMIR','DELETE')">
+                    <td sec:authorize="@authz.canOwn('RMIR','DELETE', entry.createdBy != null ? entry.createdBy.userId : null)">
                         <a th:href="@{/rmir-entry/{id}/delete(id=${entry.id})}"
                            onclick="return confirm('Are you sure you want to delete this entry?');"
                            class="btn btn-danger">

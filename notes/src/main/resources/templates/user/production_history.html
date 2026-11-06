@@ -456,7 +456,7 @@
                 <td th:text="${entry.inspector}"></td>
 
                 <!-- Delete Column (ADMIN only) -->
-                <td sec:authorize="@authz.can('PRODUCTION','DELETE')">
+                <td sec:authorize="@authz.canOwn('PRODUCTION','DELETE', entry.createdBy != null ? entry.createdBy.userId : null)">
                     <a th:href="@{/production-entry/{id}/delete(id=${entry.id})}"
                        class="btn btn-secondary"
                        style="background-color:#d32f2f;">Delete</a>
