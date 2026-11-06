@@ -385,14 +385,6 @@
                 </svg>
                 Export
             </a>
-
-            <a th:href="@{/auth/dashboard}" class="btn btn-secondary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 12l9-9 9 9"/>
-                    <path d="M9 21V9h6v12"/>
-                </svg>
-                Back to Dashboard
-            </a>
         </div>
 
     </div>
@@ -544,8 +536,9 @@
                     </td>
 
                     <!-- Delete Only Visible to Admin -->
-                    <td sec:authorize="@authz.canOwn('RMIR','DELETE', entry.createdBy != null ? entry.createdBy.userId : null)">
-                        <a th:href="@{/rmir-entry/{id}/delete(id=${entry.id})}"
+                    <td th:if="${@authz.can('RMIR','DELETE')}">
+                        <a th:if="${@authz.canOwn('RMIR','DELETE', entry.createdBy != null ? entry.createdBy.userId : null)}"
+                           th:href="@{/rmir-entry/{id}/delete(id=${entry.id})}"
                            onclick="return confirm('Are you sure you want to delete this entry?');"
                            class="btn btn-danger">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -575,5 +568,6 @@
     </div>
 </div>
 
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

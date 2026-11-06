@@ -160,10 +160,6 @@
         <button>Create New Template</button>
     </a>
 
-    <a th:href="@{/auth/dashboard}">
-        <button>Back to Dashboard</button>
-    </a>
-
     <a th:href="@{/template/due}">
         <button>Check if any task is due ?</button>
     </a>
@@ -240,5 +236,6 @@
     </tbody>
 </table>
 
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

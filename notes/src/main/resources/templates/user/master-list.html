@@ -127,9 +127,6 @@
         <a th:href="@{/masters/new}">
             <button class="btn btn-primary">Create New Master</button>
         </a>
-        <a th:href="@{/auth/dashboard}">
-            <button class="btn btn-secondary">Back to Dashboard</button>
-        </a>
     </div>
 
     <h2>All Masters</h2>
@@ -167,5 +164,6 @@
 
 </div>
 
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

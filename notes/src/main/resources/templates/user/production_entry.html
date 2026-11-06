@@ -296,13 +296,6 @@
 
 <body>
 
-<div class="top-actions">
-    <a th:href="@{/auth/dashboard}">
-        <button type="button" class="btn-dashboard">
-            Back to Dashboard
-        </button>
-    </a>
-</div>
 
 
 <h2>Production Entry</h2>
@@ -526,5 +519,6 @@
     });
 </script>
 
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

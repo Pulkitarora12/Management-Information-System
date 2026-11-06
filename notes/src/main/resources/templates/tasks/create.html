@@ -148,14 +148,6 @@
 
 <body>
 <div class="task-container">
-    <div class="top-actions">
-
-        <a th:href="@{/auth/dashboard}">
-            <button type="button" class="btn-dashboard">
-                Back to Dashboard
-            </button>
-        </a>
-    </div>
 
     <h2>Create New Task</h2>
 
@@ -233,5 +225,6 @@
     </form>
 </div>
 
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

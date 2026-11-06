@@ -66,9 +66,8 @@
     </div>
     <div class="back-link-container">
         <a th:href="@{/admin/update-role}" class="back-link">Assign Roles to Users</a>
-        &nbsp;|&nbsp;
-        <a th:href="@{/auth/dashboard}" class="back-link">Back to Dashboard</a>
     </div>
 </div>
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

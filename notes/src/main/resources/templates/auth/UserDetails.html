@@ -194,9 +194,8 @@
 
         <div class="links">
             <a th:href="@{/admin/users}" class="nav-link">Back to Users List</a>
-            <span class="separator">|</span>
-            <a th:href="@{/auth/dashboard}" class="nav-link">Back to Dashboard</a>
         </div>
     </div>
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>
