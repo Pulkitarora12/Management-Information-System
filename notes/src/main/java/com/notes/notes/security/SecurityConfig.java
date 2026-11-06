@@ -7,6 +7,7 @@ import com.notes.notes.rbac.service.UserRoleAssignmentService;
 import com.notes.notes.repository.authRepo.RoleRepository;
 import com.notes.notes.repository.authRepo.UserRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +18,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.DefaultHttpSecurityExpressionHandler;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -29,7 +31,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, ApplicationContext applicationContext) throws Exception {
 //        http.csrf(csrf ->
 //                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 //                        .ignoringRequestMatchers("/api/auth/public/**", "public/**", "/logout")
@@ -37,10 +39,15 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable());
 
+        DefaultHttpSecurityExpressionHandler expressionHandler = new DefaultHttpSecurityExpressionHandler();
+        expressionHandler.setApplicationContext(applicationContext);
+        WebExpressionAuthorizationManager adminAreaAccess = new WebExpressionAuthorizationManager(
+                "@authz.can('USERS','ADMIN') or @authz.can('ROLES','ADMIN') or @authz.can('FORM_BUILDER','ADMIN')");
+        adminAreaAccess.setExpressionHandler(expressionHandler);
+
         http.authorizeHttpRequests(requests -> requests
                 .requestMatchers("/auth/**", "/verification/**", "/api/csrf-token", "/logout").permitAll()
-                .requestMatchers("/admin/**").access(new WebExpressionAuthorizationManager(
-                        "@authz.can('USERS','ADMIN') or @authz.can('ROLES','ADMIN') or @authz.can('FORM_BUILDER','ADMIN')"))
+                .requestMatchers("/admin/**").access(adminAreaAccess)
                 .anyRequest().authenticated()
         );
 
