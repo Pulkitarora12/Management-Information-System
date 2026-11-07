@@ -27,6 +27,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/masters")
+@PreAuthorize("@authz.can('MASTERS','VIEW')")
 public class MasterController {
 
     @Autowired
@@ -70,7 +71,7 @@ public class MasterController {
     }
 
     @PostMapping("/{id}/delete")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("@authz.can('MASTERS','DELETE')")
     public String deleteMaster(@PathVariable Long id) {
         masterService.deleteMaster(id);
         return "redirect:/masters";

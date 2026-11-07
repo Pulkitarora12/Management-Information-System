@@ -4,7 +4,10 @@ import com.notes.notes.dto.moduleDTOS.RMIRRequestDTO;
 import com.notes.notes.entity.moduleEntities.Observation;
 import com.notes.notes.entity.moduleEntities.RMIR;
 import com.notes.notes.events.RMIREvent;
+import com.notes.notes.rbac.service.PermissionGuard;
+import com.notes.notes.repository.authRepo.UserRepository;
 import com.notes.notes.repository.moduleRepo.RMIRRepository;
+import com.notes.notes.security.services.CurrentUserProvider;
 import com.notes.notes.service.googleSheetServices.RMIRGoogleSheetsService;
 import com.notes.notes.service.moduleServices.RMIRService;
 import org.slf4j.Logger;
@@ -30,6 +33,17 @@ public class RMIRServiceImpl implements RMIRService {
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CurrentUserProvider currentUserProvider;
+
+    @Autowired
+    private PermissionGuard permissionGuard;
+
+    private static final String RESOURCE = "RMIR";
 
     private static final Set<String> activeUsers = ConcurrentHashMap.newKeySet();
     private static final Set<Long> activeDeletes = ConcurrentHashMap.newKeySet();
@@ -65,6 +79,11 @@ public class RMIRServiceImpl implements RMIRService {
 
             rmir.setCreatedDate(dto.getCreatedDate());
             rmir.setCreatedTime(dto.getCreatedTime());
+
+            Long currentUserId = currentUserProvider.currentUserId();
+            if (currentUserId != null) {
+                rmir.setCreatedBy(userRepository.getReferenceById(currentUserId));
+            }
 
             // Handle Observations
             if (dto.getObservations() != null) {
@@ -170,6 +189,9 @@ public class RMIRServiceImpl implements RMIRService {
 
             RMIR rmir = rmirRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("RMIR entry not found with id: " + id));
+
+            Long ownerId = rmir.getCreatedBy() != null ? rmir.getCreatedBy().getUserId() : null;
+            permissionGuard.requireDelete(RESOURCE, ownerId);
 
             rmirRepository.deleteById(id);
 

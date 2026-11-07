@@ -5,7 +5,10 @@ import com.notes.notes.entity.moduleEntities.DowntimeEntry;
 import com.notes.notes.entity.moduleEntities.ProductionEntry;
 import com.notes.notes.entity.moduleEntities.TimeSlot;
 import com.notes.notes.events.ProductionEntryEvent;
+import com.notes.notes.rbac.service.PermissionGuard;
+import com.notes.notes.repository.authRepo.UserRepository;
 import com.notes.notes.repository.moduleRepo.ProductionEntryRepository;
+import com.notes.notes.security.services.CurrentUserProvider;
 import com.notes.notes.service.googleSheetServices.ProductionGoogleSheetsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,6 +32,17 @@ public class ProductionEntryService {
 
     @Autowired
     private ProductionGoogleSheetsService productionGoogleSheetsService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CurrentUserProvider currentUserProvider;
+
+    @Autowired
+    private PermissionGuard permissionGuard;
+
+    private static final String RESOURCE = "PRODUCTION";
 
     private static final Set<String> activeUsers = ConcurrentHashMap.newKeySet();
     private static final Set<Long> activeDeletes = ConcurrentHashMap.newKeySet();
@@ -58,6 +72,11 @@ public class ProductionEntryService {
             entry.setRemarks(dto.getRemarks());
             entry.setSheetSize(dto.getSheetSize());
             entry.setInspector(dto.getInspector());
+
+            Long currentUserId = currentUserProvider.currentUserId();
+            if (currentUserId != null) {
+                entry.setCreatedBy(userRepository.getReferenceById(currentUserId));
+            }
 
             // Single time slot
             if (dto.getTimeSlot() != null) {
@@ -162,6 +181,9 @@ public class ProductionEntryService {
         try {
             ProductionEntry entry = repository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Entry not found"));
+
+            Long ownerId = entry.getCreatedBy() != null ? entry.getCreatedBy().getUserId() : null;
+            permissionGuard.requireDelete(RESOURCE, ownerId);
 
             repository.deleteById(id);
 

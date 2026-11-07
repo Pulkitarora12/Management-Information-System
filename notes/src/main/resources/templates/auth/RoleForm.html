@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>New Role</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/output.css}">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f4f8; min-height: 100vh; padding: 40px 20px;
+        }
+        .container { max-width: 520px; margin: 0 auto; }
+        .header { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        h2 { color: #1a202c; font-size: 28px; font-weight: 700; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; color: #4a5568; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+        input[type="text"] {
+            width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 8px;
+            font-size: 15px; background: #f7fafc; color: #2d3748;
+        }
+        input:focus { outline: none; border-color: #667eea; background: white; }
+        .hint { color: #a0aec0; font-size: 12px; margin-top: 6px; }
+        button[type="submit"] {
+            width: 100%; padding: 14px; background: #667eea; color: white; border: none;
+            border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;
+        }
+        button[type="submit"]:hover { background: #5568d3; }
+        .back-link-container { text-align: center; margin-top: 16px; }
+        .back-link { color: #667eea; text-decoration: none; font-weight: 500; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header"><h2>New Role</h2></div>
+    <div class="card">
+        <form th:action="@{/admin/roles/new}" method="post">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" name="name" required placeholder="e.g. Production Supervisor">
+            </div>
+            <div class="form-group">
+                <label>Role Key</label>
+                <input type="text" name="roleKey" required placeholder="e.g. PRODUCTION_SUPERVISOR">
+                <div class="hint">Uppercase, no spaces. Used internally; cannot be changed later.</div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" placeholder="Optional">
+            </div>
+            <button type="submit">Create &amp; Configure Permissions</button>
+        </form>
+    </div>
+    <div class="back-link-container">
+        <a th:href="@{/admin/roles}" class="back-link">Back to Roles</a>
+    </div>
+</div>
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
+</body>
+</html>

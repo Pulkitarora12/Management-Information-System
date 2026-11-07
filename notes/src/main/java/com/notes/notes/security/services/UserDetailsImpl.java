@@ -94,6 +94,36 @@ public class UserDetailsImpl implements UserDetails {
         );
     }
 
+    /**
+     * Same as {@link #build(User)}, plus dynamic-RBAC authorities: ROLE_&lt;role_key&gt;
+     * for every app_role assigned to the user, and RES:ACTION for every grant they
+     * hold (D2 step 4). The legacy authority from {@link #build(User)} is kept too, so
+     * nothing that still checks hasRole('ADMIN')/hasRole('USER') breaks.
+     */
+    public static UserDetailsImpl build(User user, Collection<String> dynamicRoleKeys, Collection<String> resourceActionGrants) {
+        java.util.List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority(user.getRole().getRoleName().name()));
+        dynamicRoleKeys.forEach(roleKey -> authorities.add(new SimpleGrantedAuthority("ROLE_" + roleKey)));
+        resourceActionGrants.forEach(grant -> authorities.add(new SimpleGrantedAuthority(grant)));
+
+        return new UserDetailsImpl(
+                user.getUserId(),
+                user.getUserName(),
+                user.getEmail(),
+                user.getPassword(),
+                user.isTwoFactorEnabled(),
+                user.isEnabled(),
+                user.isVerified(),
+                user.isAccountNonLocked(),
+                user.isAccountNonExpired(),
+                user.isCredentialsNonExpired(),
+                authorities,
+                user.getEmployeeFullName(),
+                user.getEmployeeDepartment(),
+                user.getEmployeePhone()
+        );
+    }
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

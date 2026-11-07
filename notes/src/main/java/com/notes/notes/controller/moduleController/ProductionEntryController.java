@@ -192,7 +192,7 @@ public class ProductionEntryController {
         return "user/downtime";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@authz.can('PRODUCTION','DELETE')")
     @GetMapping("/{id}/delete")
     public String deleteEntry(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
@@ -201,6 +201,8 @@ public class ProductionEntryController {
                     "success",
                     "Production entry deleted successfully!"
             );
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
         } catch (IllegalStateException e) {
             redirectAttributes.addFlashAttribute(
                     "error",

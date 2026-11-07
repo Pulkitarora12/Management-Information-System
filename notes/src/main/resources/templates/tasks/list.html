@@ -374,14 +374,6 @@
                 🕒 Task History
             </a>
 
-            <a th:href="@{/auth/dashboard}"
-               class="btn"
-               style="
-           background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
-           box-shadow: 0 4px 12px rgba(113, 128, 150, 0.3);
-       ">
-                ⬅ Back to Dashboard
-            </a>
         </div>
 
     </div>
@@ -616,5 +608,6 @@
     </div>
 </div>
 
+    <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

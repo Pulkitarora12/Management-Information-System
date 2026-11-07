@@ -10,6 +10,7 @@ import com.notes.notes.repository.authRepo.VerificationTokenRepository;
 import com.notes.notes.service.googleSheetServices.GoogleSheetsService;
 import com.notes.notes.service.emailService.EmailService;
 import com.notes.notes.service.authServices.UserService;
+import com.notes.notes.rbac.service.UserRoleAssignmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,6 +44,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     GoogleSheetsService googleSheetsService;
 
+    @Autowired
+    UserRoleAssignmentService userRoleAssignmentService;
+
     @Override
     public User saveUser(User user) {
 
@@ -55,6 +59,7 @@ public class UserServiceImpl implements UserService {
 
         // Save user
         User savedUser = userRepository.save(user);
+        userRoleAssignmentService.syncFromLegacyRole(savedUser);
 
         // If user already verified, don't send email
         if (savedUser.isVerified()) {
@@ -111,6 +116,7 @@ public class UserServiceImpl implements UserService {
 
         user.setRole(role);
         User updatedUser = userRepository.save(user);
+        userRoleAssignmentService.syncFromLegacyRole(updatedUser);
 
         // ✅ NEW: Update in Google Sheets
         try {
