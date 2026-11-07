@@ -1095,6 +1095,39 @@ class PaperBenchmarkRunner {
      *
      *   mvn test -Dtest=PaperBenchmarkRunner#rerunFixedScenarios -DfailIfNoTests=false
      */
+    /**
+     * Item 2 follow-up: form_submission_json now denormalizes created_by (V7
+     * migration) the same way RELATIONAL already did, so every JSON-backed
+     * variant's own-scope filtering changed, not just JSON_IDX's. Rerun all three
+     * JSON variants' full Scenario A at every size in one pass (this also
+     * recaptures their EXPLAIN ANALYZE files at 100k for free, since captureExplain
+     * already runs inside runCell whenever size==100_000 - no separate explain pass
+     * needed).
+     *
+     *   mvn test -Dtest=PaperBenchmarkRunner#rerunJsonCreatedByFix -DfailIfNoTests=false
+     */
+    @Test
+    void rerunJsonCreatedByFix() throws IOException {
+        runStart = System.nanoTime();
+        bulkLoader = new BulkLoader(jdbc);
+        long[] ownerUserIds = benchUsers();
+        loadExistingCsvRows();
+        loadExistingIntegrityRows();
+
+        List<Variant> jsonVariants = variants().stream()
+                .filter(v -> v.storageType() == StorageType.JSON)
+                .toList();
+        for (int size : SIZES) {
+            for (Variant variant : jsonVariants) {
+                System.out.println("=== [rerun] " + variant.label() + " Scenario A @ " + size + " (created_by denorm) ===");
+                removeRows(r -> r[0].equals(variant.label()) && r[1].equals(String.valueOf(size)) && r[2].equals("A"));
+                runCell(variant, size, ownerUserIds, false);
+                writeResults();
+            }
+        }
+        System.out.println("TOTAL RERUN TIME: " + minutesSoFar() + " min");
+    }
+
     @Test
     void rerunFixedScenarios() throws IOException {
         runStart = System.nanoTime();
