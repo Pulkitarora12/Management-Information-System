@@ -54,15 +54,29 @@ public class RelationalSubmissionStore implements SubmissionStore {
         for (FormField field : fields) {
             sql.append(", ").append(columnName(field)).append(" ").append(sqlType(field.getType()));
         }
+        for (FormField field : fields) {
+            if (isIndexed(field)) {
+                sql.append(", KEY idx_").append(columnName(field)).append(" (").append(columnName(field)).append(")");
+            }
+        }
         sql.append(", CONSTRAINT fk_").append(tableName(form))
                 .append("_submission FOREIGN KEY (submission_id) REFERENCES form_submission (id)")
                 .append(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         jdbc.execute(sql.toString());
     }
 
+    /** Same "indexed":true config convention JSON storage uses - a field opts into a secondary index. */
+    private boolean isIndexed(FormField field) {
+        String config = field.getConfig();
+        return config != null && config.contains("\"indexed\":true");
+    }
+
     @Override
     public void onFieldAdded(FormDefinition form, FormField field) {
         jdbc.execute("ALTER TABLE " + tableName(form) + " ADD COLUMN " + columnName(field) + " " + sqlType(field.getType()));
+        if (isIndexed(field)) {
+            jdbc.execute("ALTER TABLE " + tableName(form) + " ADD INDEX idx_" + columnName(field) + " (" + columnName(field) + ")");
+        }
     }
 
     @Override

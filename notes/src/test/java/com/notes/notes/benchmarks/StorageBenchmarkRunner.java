@@ -45,7 +45,7 @@ class StorageBenchmarkRunner {
 
     // Scaled down from the 10k/100k/1M in the original plan to fit one session's
     // time budget; see REPORT.md "Scope note" for why, and how to extend this list.
-    private static final int[] DATASET_SIZES = {1_000, 10_000};
+    private static final int[] DATASET_SIZES = {1_000, 10_000, 100_000};
     private static final int WARMUP_RUNS = 1;
     private static final int TIMED_RUNS = 5;
     private static final int BATCH_SIZE = 1000;
@@ -143,7 +143,8 @@ class StorageBenchmarkRunner {
         csvRows.add(row(variant.label, size, "add_field_on_populated_form", 1, elapsed, size));
 
         long storageBytes = variant.store.storageSizeBytes(form);
-        csvRows.add(row(variant.label, size, "storage_size_bytes", 1, storageBytes, size));
+        csvRows.add(new String[]{variant.label, String.valueOf(size), "storage_size_bytes", "1",
+                String.valueOf(storageBytes), String.valueOf(size)});
     }
 
     private List<Long> loadData(FormDefinition form, List<FormField> fields, Variant variant, int size, User benchUser) {
@@ -269,9 +270,15 @@ class StorageBenchmarkRunner {
 
     private void writeSummary(Path resultsDir) throws IOException {
         // group latency samples by (strategy, size, operation) from runs 1..TIMED_RUNS of `timed()`
+        // storage_size_bytes is a byte count, not a latency - kept out of the ms stats entirely.
         Map<String, List<Long>> grouped = new LinkedHashMap<>();
+        Map<String, Long> storageBytesByKey = new LinkedHashMap<>();
         for (String[] r : csvRows.subList(1, csvRows.size())) {
             String key = r[0] + "|" + r[1] + "|" + r[2];
+            if (r[2].equals("storage_size_bytes")) {
+                storageBytesByKey.put(r[0] + "|" + r[1], Long.parseLong(r[4]));
+                continue;
+            }
             double ms = Double.parseDouble(r[4]);
             grouped.computeIfAbsent(key, k -> new ArrayList<>()).add((long) (ms * 1_000_000));
         }
@@ -288,6 +295,17 @@ class StorageBenchmarkRunner {
             }
         }
         System.out.println("Summary written to " + summaryCsv.toAbsolutePath());
+
+        Path storageSummaryCsv = resultsDir.resolve("storage_size_summary.csv");
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(storageSummaryCsv))) {
+            writer.println("strategy,dataset_size,storage_size_bytes,storage_size_mb");
+            for (Map.Entry<String, Long> entry : storageBytesByKey.entrySet()) {
+                String[] parts = entry.getKey().split("\\|");
+                writer.println(String.join(",", parts[0], parts[1], String.valueOf(entry.getValue()),
+                        fmt(entry.getValue() / 1_000_000.0)));
+            }
+        }
+        System.out.println("Storage size summary written to " + storageSummaryCsv.toAbsolutePath());
     }
 
     private String fmt(double v) {

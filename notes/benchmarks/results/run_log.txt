@@ -1,0 +1,9 @@
+Variant order per size:
+size=10000 order=[JSON_IDX, JSON_IDX_LOW, JSON, EAV, RELATIONAL] (seed=10042)
+size=100000 order=[JSON, JSON_IDX, EAV, RELATIONAL, JSON_IDX_LOW] (seed=100042)
+
+Skips/anomalies during run:
+EAV@10000 add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag
+EAV@100000 add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag
+
+Total runtime so far: 22.5 min
