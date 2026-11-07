@@ -49,11 +49,15 @@ public class RelationalSubmissionStore implements SubmissionStore {
 
     @Override
     public void onFormCreated(FormDefinition form, List<FormField> fields) {
+        // created_by is denormalized onto this table (not just joined via form_submission)
+        // so own-scope filtering can use a plain indexed column instead of a join
+        // (BENCHMARK_FINAL_PROMPT.md round 3, item 2: equal indexing incl. created_by).
         StringBuilder sql = new StringBuilder("CREATE TABLE ").append(tableName(form))
-                .append(" (submission_id BIGINT NOT NULL PRIMARY KEY");
+                .append(" (submission_id BIGINT NOT NULL PRIMARY KEY, created_by BIGINT NULL");
         for (FormField field : fields) {
             sql.append(", ").append(columnName(field)).append(" ").append(sqlType(field.getType()));
         }
+        sql.append(", KEY idx_created_by (created_by)");
         for (FormField field : fields) {
             if (isIndexed(field)) {
                 sql.append(", KEY idx_").append(columnName(field)).append(" (").append(columnName(field)).append(")");
@@ -88,8 +92,9 @@ public class RelationalSubmissionStore implements SubmissionStore {
     @Transactional
     public void save(FormDefinition form, List<FormField> fields, Long submissionId, Map<String, Object> values) {
         Map<String, FormField> byKey = indexByKey(fields);
-        List<String> columns = new ArrayList<>(List.of("submission_id"));
-        List<Object> params = new ArrayList<>(List.of(submissionId));
+        List<String> columns = new ArrayList<>(List.of("submission_id", "created_by"));
+        Long createdBy = jdbc.queryForObject("SELECT created_by FROM form_submission WHERE id = ?", Long.class, submissionId);
+        List<Object> params = new ArrayList<>(List.of(submissionId, (Object) createdBy));
         for (Map.Entry<String, Object> entry : values.entrySet()) {
             FormField field = byKey.get(entry.getKey());
             if (field == null) continue;
@@ -135,20 +140,15 @@ public class RelationalSubmissionStore implements SubmissionStore {
     @Override
     public List<SubmissionRecord> query(FormDefinition form, List<FormField> fields, QuerySpec spec) {
         Map<String, FormField> byKey = indexByKey(fields);
-        StringBuilder sql = new StringBuilder("SELECT t.* FROM ").append(tableName(form)).append(" t ");
+        StringBuilder sql = new StringBuilder("SELECT t.* FROM ").append(tableName(form)).append(" t WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
-        boolean needsSubmissionJoin = spec.getOwnerId() != null;
-        if (needsSubmissionJoin) {
-            sql.append("JOIN form_submission fs ON fs.id = t.submission_id ");
-        }
-        sql.append("WHERE 1=1 ");
         for (FilterCondition filter : spec.getFilters()) {
             FormField field = byKey.get(filter.fieldKey());
             if (field == null) continue;
             appendFilterPredicate(sql, field, filter, params);
         }
-        if (needsSubmissionJoin) {
-            sql.append(" AND fs.created_by = ? ");
+        if (spec.getOwnerId() != null) {
+            sql.append(" AND t.created_by = ? ");
             params.add(spec.getOwnerId());
         }
         if (spec.getSortFieldKey() != null && byKey.containsKey(spec.getSortFieldKey())) {
@@ -170,20 +170,15 @@ public class RelationalSubmissionStore implements SubmissionStore {
     @Override
     public long count(FormDefinition form, List<FormField> fields, QuerySpec spec) {
         Map<String, FormField> byKey = indexByKey(fields);
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM ").append(tableName(form)).append(" t ");
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM ").append(tableName(form)).append(" t WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
-        boolean needsSubmissionJoin = spec.getOwnerId() != null;
-        if (needsSubmissionJoin) {
-            sql.append("JOIN form_submission fs ON fs.id = t.submission_id ");
-        }
-        sql.append("WHERE 1=1 ");
         for (FilterCondition filter : spec.getFilters()) {
             FormField field = byKey.get(filter.fieldKey());
             if (field == null) continue;
             appendFilterPredicate(sql, field, filter, params);
         }
-        if (needsSubmissionJoin) {
-            sql.append(" AND fs.created_by = ? ");
+        if (spec.getOwnerId() != null) {
+            sql.append(" AND t.created_by = ? ");
             params.add(spec.getOwnerId());
         }
         Long result = jdbc.queryForObject(sql.toString(), params.toArray(), Long.class);

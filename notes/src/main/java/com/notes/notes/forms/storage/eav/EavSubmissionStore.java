@@ -100,6 +100,20 @@ public class EavSubmissionStore implements SubmissionStore {
             appendFilterPredicate(sql, alias, filter, field.getType(), params);
         }
 
+        // Sort via a joined alias on the sort field, not a correlated per-row subquery
+        // (the EAV_NAIVE comparison variant keeps the subquery form deliberately).
+        // LEFT JOIN: a submission missing this field must still appear in the result,
+        // just sorted as if its value were 0/NULL, matching the subquery version's
+        // COALESCE(value_num, 0) behavior.
+        String sortAlias = null;
+        FormField sortField = spec.getSortFieldKey() == null ? null : byKey.get(spec.getSortFieldKey());
+        if (sortField != null) {
+            sortAlias = "sortv";
+            sql.append("LEFT JOIN form_value ").append(sortAlias).append(" ON ").append(sortAlias)
+                    .append(".submission_id = fs.id AND ").append(sortAlias).append(".field_id = ")
+                    .append(sortField.getId()).append(" ");
+        }
+
         sql.append("WHERE fs.form_id = ?");
         params.add(form.getId());
         if (spec.getOwnerId() != null) {
@@ -107,12 +121,9 @@ public class EavSubmissionStore implements SubmissionStore {
             params.add(spec.getOwnerId());
         }
 
-        if (spec.getSortFieldKey() != null) {
-            FormField sortField = byKey.get(spec.getSortFieldKey());
-            if (sortField != null) {
-                sql.append(" ORDER BY (SELECT COALESCE(value_num, 0) FROM form_value WHERE submission_id = fs.id AND field_id = ")
-                        .append(sortField.getId()).append(") ").append(spec.isSortDescending() ? "DESC" : "ASC");
-            }
+        if (sortAlias != null) {
+            sql.append(" ORDER BY COALESCE(").append(sortAlias).append(".value_num, 0) ")
+                    .append(spec.isSortDescending() ? "DESC" : "ASC");
         } else {
             sql.append(" ORDER BY fs.id ").append(spec.isSortDescending() ? "DESC" : "ASC");
         }

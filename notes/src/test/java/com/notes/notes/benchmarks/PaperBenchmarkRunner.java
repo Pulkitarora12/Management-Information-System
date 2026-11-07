@@ -7,6 +7,7 @@ import com.notes.notes.forms.entity.*;
 import com.notes.notes.forms.repository.FormFieldRepository;
 import com.notes.notes.forms.service.FormDefinitionService;
 import com.notes.notes.forms.storage.*;
+import com.notes.notes.forms.storage.eav.EavNaiveSubmissionStore;
 import com.notes.notes.forms.storage.eav.EavSubmissionStore;
 import com.notes.notes.forms.storage.json.JsonSubmissionStore;
 import com.notes.notes.forms.storage.relational.RelationalSubmissionStore;
@@ -39,6 +40,13 @@ import java.util.function.Supplier;
 @ActiveProfiles("bench")
 class PaperBenchmarkRunner {
 
+    static class ChecksumMismatchException extends RuntimeException {
+        ChecksumMismatchException(String message) {
+            super(message);
+        }
+    }
+
+
     private static final int[] SIZES = {10_000, 100_000};
     private static final int WARMUP_READS = 3;
     private static final int TIMED_READS = 10;
@@ -51,6 +59,7 @@ class PaperBenchmarkRunner {
     @Autowired private FormDefinitionService formDefinitionService;
     @Autowired private FormFieldRepository formFieldRepository;
     @Autowired private EavSubmissionStore eavSubmissionStore;
+    @Autowired private EavNaiveSubmissionStore eavNaiveSubmissionStore;
     @Autowired private JsonSubmissionStore jsonSubmissionStore;
     @Autowired private RelationalSubmissionStore relationalSubmissionStore;
     @Autowired private UserRepository userRepository;
@@ -64,16 +73,32 @@ class PaperBenchmarkRunner {
     private final List<String> skipLog = new ArrayList<>();
     private long runStart;
 
-    private record Variant(String label, StorageType storageType, Set<String> indexedKeys) {
+    /**
+     * storageType drives physical layout decisions (which table(s) to create/truncate,
+     * what bulk-insert path to use). storeOverride, when set, is the SubmissionStore
+     * actually used for every read/write measurement instead of the one storageType
+     * would normally resolve to - this is EAV_NAIVE's entire reason to exist: same
+     * physical form_value table and bulk-load path as EAV, different query logic.
+     */
+    private record Variant(String label, StorageType storageType, Set<String> indexedKeys, SubmissionStore storeOverride) {
+        Variant(String label, StorageType storageType, Set<String> indexedKeys) {
+            this(label, storageType, indexedKeys, null);
+        }
     }
 
-    private static final List<Variant> VARIANTS = List.of(
-            new Variant("EAV", StorageType.EAV, Set.of()),
-            new Variant("JSON", StorageType.JSON, Set.of()),
-            new Variant("JSON_IDX", StorageType.JSON, Set.of("part_no", "prod_date")),
-            new Variant("JSON_IDX_LOW", StorageType.JSON, Set.of("shift")),
-            new Variant("RELATIONAL", StorageType.RELATIONAL, Set.of("part_no", "prod_date", "shift"))
-    );
+    // EAV's (field_id, value_*) indexes already cover every field generically, so it
+    // never needs per-field "indexed":true config the way JSON/RELATIONAL's
+    // generated/opt-in columns do - hence Set.of() for both EAV variants below.
+    private List<Variant> variants() {
+        return List.of(
+                new Variant("EAV", StorageType.EAV, Set.of()),
+                new Variant("EAV_NAIVE", StorageType.EAV, Set.of(), eavNaiveSubmissionStore),
+                new Variant("JSON", StorageType.JSON, Set.of()),
+                new Variant("JSON_IDX", StorageType.JSON, Set.of("part_no", "prod_date", "shift", "machine")),
+                new Variant("JSON_IDX_LOW", StorageType.JSON, Set.of("shift")),
+                new Variant("RELATIONAL", StorageType.RELATIONAL, Set.of("part_no", "prod_date", "shift", "machine"))
+        );
+    }
 
     @Test
     void runBenchmark() throws IOException {
@@ -83,7 +108,7 @@ class PaperBenchmarkRunner {
         csvRows.add(new String[]{"strategy", "dataset_size", "scenario", "operation", "run", "value", "unit", "rows_returned", "timestamp"});
 
         for (int size : SIZES) {
-            List<Variant> order = new ArrayList<>(VARIANTS);
+            List<Variant> order = new ArrayList<>(variants());
             Collections.shuffle(order, new Random(PaperDataGenerator.ORDER_SEED + size));
             orderLog.add("size=" + size + " order=" + order.stream().map(Variant::label).toList() + " (seed=" + (PaperDataGenerator.ORDER_SEED + size) + ")");
 
@@ -92,6 +117,10 @@ class PaperBenchmarkRunner {
                 System.out.println("=== " + variant.label() + " @ " + size + " rows (elapsed so far: " + minutesSoFar() + " min) ===");
                 try {
                     runCell(variant, size, ownerUserIds);
+                } catch (ChecksumMismatchException e) {
+                    skipLog.add("FATAL: " + e.getMessage());
+                    writeResults();
+                    throw e; // item 5: "fail the run if not" - a real correctness bug, not a flaky cell
                 } catch (Exception e) {
                     skipLog.add(variant.label() + "@" + size + " FAILED: " + e);
                     System.out.println("!!! CELL FAILED, continuing: " + e);
@@ -107,8 +136,164 @@ class PaperBenchmarkRunner {
                 writeResults(); // checkpoint after every cell so a crash doesn't lose data
             }
         }
+
+        try {
+            runIntegrityScenario(ownerUserIds);
+        } catch (Exception e) {
+            skipLog.add("Scenario E FAILED: " + e);
+            System.out.println("!!! Scenario E FAILED: " + e);
+            e.printStackTrace();
+        }
+
         writeResults();
         System.out.println("TOTAL RUNTIME: " + minutesSoFar() + " min");
+    }
+
+    // -------------------------------------------------------------- integrity ----
+
+    private static final int INTEGRITY_SIZE = 10_000;
+    private static final int INTEGRITY_ATTEMPTS = 100;
+    private final List<String[]> integrityRows = new ArrayList<>();
+
+    /**
+     * Scenario E: for each variant, load a small (10k) dataset, then attempt 100
+     * raw-JDBC writes per violation type - bypassing the service/validation layer
+     * entirely, writing straight to each strategy's own schema - and count how many
+     * the SCHEMA itself rejects vs silently accepts. This measures what each
+     * strategy's table definitions actually guarantee, not what the application
+     * layer guarantees (ValidationService would catch all of these before they
+     * reach the database in normal use - that's not what's being tested here).
+     */
+    private void runIntegrityScenario(long[] ownerUserIds) {
+        for (Variant variant : variants()) {
+            System.out.println("=== Scenario E: " + variant.label() + " (elapsed so far: " + minutesSoFar() + " min) ===");
+            switch (variant.storageType()) {
+                case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
+                case JSON -> jdbc.execute("TRUNCATE TABLE form_submission_json");
+                default -> { }
+            }
+            List<FormField> fields = buildFields(variant.indexedKeys());
+            FormDefinition form = formDefinitionService.createForm(
+                    "integrity_" + variant.label().toLowerCase() + "_" + System.nanoTime(),
+                    "Integrity Test " + variant.label(), "PaperBenchmarkRunner", variant.storageType(), fields);
+            List<FormField> allFields = form.getFields();
+            SubmissionStore store = variant.storeOverride() != null ? variant.storeOverride() : storeFor(variant.storageType());
+
+            Random dataRandom = new Random(PaperDataGenerator.DATA_SEED);
+            Random ownerRandom = new Random(PaperDataGenerator.DATA_SEED + 1);
+            // bulkLoad also appends its own insert_batch_1000/bulk_load_total rows to csvRows
+            // (scenario "A") for this throwaway form - harmless noise, left as-is rather than
+            // adding a parameter just to suppress it for this one-off setup pass.
+            List<Long> submissionIds = bulkLoad(variant, INTEGRITY_SIZE, form, allFields, store, dataRandom, ownerRandom, ownerUserIds);
+
+            FormField numericField = byKey(allFields, "qty_produced");
+            FormField dateField = byKey(allFields, "prod_date");
+            FormField operatorField = byKey(allFields, "operator");
+
+            integrityAttempt(variant, "wrong_type_numeric", () -> attemptWrongTypeNumeric(variant, form, submissionIds, dataRandom, ownerUserIds, numericField));
+            integrityAttempt(variant, "invalid_date", () -> attemptInvalidDate(variant, form, submissionIds, dataRandom, ownerUserIds, dateField));
+            integrityAttempt(variant, "missing_required", () -> attemptMissingRequired(variant, form, allFields, store, dataRandom, ownerUserIds));
+            integrityAttempt(variant, "dangling_master_ref", () -> attemptDanglingMasterRef(variant, form, submissionIds, operatorField));
+            integrityAttempt(variant, "orphan_value_row", () -> attemptOrphanValueRow(variant, form, numericField));
+
+            teardownCell(variant, form);
+        }
+    }
+
+    private void integrityAttempt(Variant variant, String violationType, java.util.function.BooleanSupplier attempt) {
+        int rejected = 0;
+        for (int i = 0; i < INTEGRITY_ATTEMPTS; i++) {
+            boolean wasRejected = attempt.getAsBoolean();
+            if (wasRejected) rejected++;
+        }
+        integrityRows.add(new String[]{variant.label(), violationType, String.valueOf(INTEGRITY_ATTEMPTS),
+                String.valueOf(rejected), String.valueOf(INTEGRITY_ATTEMPTS - rejected)});
+    }
+
+    /** @return true if the schema rejected the write (threw), false if it silently accepted it. */
+    private boolean attemptWrongTypeNumeric(Variant variant, FormDefinition form, List<Long> submissionIds, Random random, long[] ownerUserIds, FormField numericField) {
+        try {
+            Long id = newThrowawaySubmission(form, ownerUserIds, random);
+            switch (variant.storageType()) {
+                case EAV -> jdbc.update("INSERT INTO form_value (submission_id, field_id, value_text) VALUES (?, ?, 'abc')", id, numericField.getId());
+                case JSON -> jdbc.update("INSERT INTO form_submission_json (submission_id, data) VALUES (?, ?)", id, "{\"qty_produced\":\"abc\"}");
+                case RELATIONAL -> jdbc.update("INSERT INTO form_data_" + form.getId() + " (submission_id, created_by, " +
+                        numericField.relationalColumnName() + ") VALUES (?, ?, 'abc')", id, ownerUserIds[0]);
+            }
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private boolean attemptInvalidDate(Variant variant, FormDefinition form, List<Long> submissionIds, Random random, long[] ownerUserIds, FormField dateField) {
+        try {
+            Long id = newThrowawaySubmission(form, ownerUserIds, random);
+            switch (variant.storageType()) {
+                case EAV -> jdbc.update("INSERT INTO form_value (submission_id, field_id, value_date) VALUES (?, ?, '2026-13-45')", id, dateField.getId());
+                case JSON -> jdbc.update("INSERT INTO form_submission_json (submission_id, data) VALUES (?, ?)", id, "{\"prod_date\":\"2026-13-45\"}");
+                case RELATIONAL -> jdbc.update("INSERT INTO form_data_" + form.getId() + " (submission_id, created_by, " +
+                        dateField.relationalColumnName() + ") VALUES (?, ?, '2026-13-45')", id, ownerUserIds[0]);
+            }
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /** None of the 3 schemas enforce FormField.required as a DB constraint - expected result: 0 rejected, every variant. */
+    private boolean attemptMissingRequired(Variant variant, FormDefinition form, List<FormField> fields, SubmissionStore store, Random random, long[] ownerUserIds) {
+        try {
+            Long id = newThrowawaySubmission(form, ownerUserIds, random);
+            Map<String, Object> partial = new LinkedHashMap<>(generator.row(random));
+            partial.remove("part_no"); // simulate a required field never being supplied
+            store.save(form, fields, id, partial);
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /**
+     * MASTER_REF fields in this implementation store a plain value, not an actual FK
+     * to a master table (no real master-linking was built - see conversation scope
+     * decisions). There is therefore no constraint any strategy COULD enforce here;
+     * this always "accepts" by construction, not because any strategy is lax.
+     */
+    private boolean attemptDanglingMasterRef(Variant variant, FormDefinition form, List<Long> submissionIds, FormField operatorField) {
+        try {
+            Long id = submissionIds.get(0);
+            switch (variant.storageType()) {
+                case EAV -> jdbc.update("UPDATE form_value SET value_text = 'Operator-99999' WHERE submission_id = ? AND field_id = ?", id, operatorField.getId());
+                case JSON -> jdbc.update("UPDATE form_submission_json SET data = JSON_SET(data, '$.operator', 'Operator-99999') WHERE submission_id = ?", id);
+                case RELATIONAL -> jdbc.update("UPDATE form_data_" + form.getId() + " SET " + operatorField.relationalColumnName() + " = 'Operator-99999' WHERE submission_id = ?", id);
+            }
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private boolean attemptOrphanValueRow(Variant variant, FormDefinition form, FormField numericField) {
+        long bogusSubmissionId = 999_999_000_000L;
+        try {
+            switch (variant.storageType()) {
+                case EAV -> jdbc.update("INSERT INTO form_value (submission_id, field_id, value_num) VALUES (?, ?, 1)", bogusSubmissionId, numericField.getId());
+                case JSON -> jdbc.update("INSERT INTO form_submission_json (submission_id, data) VALUES (?, '{}')", bogusSubmissionId);
+                case RELATIONAL -> jdbc.update("INSERT INTO form_data_" + form.getId() + " (submission_id, created_by) VALUES (?, 1)", bogusSubmissionId);
+            }
+            return false;
+        } catch (Exception e) {
+            return true; // expected: the FK to form_submission(id) rejects this for every strategy
+        }
+    }
+
+    private Long newThrowawaySubmission(FormDefinition form, long[] ownerUserIds, Random random) {
+        com.notes.notes.forms.entity.FormSubmission header = new com.notes.notes.forms.entity.FormSubmission();
+        header.setForm(form);
+        header.setFormVersion(form.getVersion());
+        header.setCreatedBy(userRepository.findById(ownerUserIds[random.nextInt(ownerUserIds.length)]).orElseThrow());
+        return formSubmissionRepository.save(header).getId();
     }
 
     private double minutesSoFar() {
@@ -135,19 +320,23 @@ class PaperBenchmarkRunner {
                 "Paper Benchmark " + variant.label() + " " + size, "PaperBenchmarkRunner",
                 variant.storageType(), fields);
         List<FormField> allFields = form.getFields();
-        SubmissionStore store = storeFor(variant.storageType());
+        SubmissionStore store = variant.storeOverride() != null ? variant.storeOverride() : storeFor(variant.storageType());
 
         Random dataRandom = new Random(PaperDataGenerator.DATA_SEED);
         Random ownerRandom = new Random(PaperDataGenerator.DATA_SEED + 1);
 
         List<Long> submissionIds = bulkLoad(variant, size, form, allFields, store, dataRandom, ownerRandom, ownerUserIds);
         analyzeTables(variant, form);
+        // item 6: immediately after load+ANALYZE, before anything else touches row count or schema.
+        measureStorageSize(variant, size, form);
 
         runReads(variant, size, form, allFields, store, submissionIds, ownerUserIds);
         runWrites(variant, size, form, allFields, store, submissionIds, dataRandom, ownerUserIds);
         runExportFull(variant, size, form, allFields, store);
-        runSchemaEvolution(variant, size, form, allFields, store);
-        measureStorageSize(variant, size, form);
+        if (size == 100_000) {
+            captureExplain(variant, size, form, allFields, ownerUserIds);
+        }
+        runSchemaEvolution(variant, size, form, allFields, store, size);
 
         teardownCell(variant, form);
     }
@@ -165,11 +354,12 @@ class PaperBenchmarkRunner {
             for (int i = 0; i < thisChunk; i++) rows.add(generator.row(dataRandom));
 
             long chunkStart = System.nanoTime();
-            List<Long> ids = bulkLoader.batchInsertHeaders(form.getId(), form.getVersion(), thisChunk, ownerUserIds, ownerRandom);
+            BulkLoader.HeaderBatch headerBatch = bulkLoader.batchInsertHeaders(form.getId(), form.getVersion(), thisChunk, ownerUserIds, ownerRandom);
+            List<Long> ids = headerBatch.submissionIds();
             switch (variant.storageType()) {
                 case EAV -> bulkLoader.batchInsertEav(ids, fields, rows);
                 case JSON -> bulkLoader.batchInsertJson(ids, rows);
-                case RELATIONAL -> bulkLoader.batchInsertRelational(form.getId(), ids, fields, rows);
+                case RELATIONAL -> bulkLoader.batchInsertRelational(form.getId(), ids, headerBatch.ownerIds(), fields, rows);
             }
             long chunkElapsed = System.nanoTime() - chunkStart;
             csvRows.add(csvRow(variant.label(), size, "A", "insert_batch_1000", run++, ms(chunkElapsed), "ms", thisChunk));
@@ -199,32 +389,25 @@ class PaperBenchmarkRunner {
             return store.findById(form, fields, id).isEmpty() ? 0 : 1;
         });
 
-        timed(variant.label(), size, "A", "filter_eq_high", true, () -> {
-            QuerySpec spec = new QuerySpec().addFilter(FilterCondition.eq("part_no", "PN-10500")).page(0, 100);
-            return store.query(form, fields, spec).size();
-        });
+        Map<Long, Integer> idToGenerationIndex = new HashMap<>();
+        for (int i = 0; i < submissionIds.size(); i++) idToGenerationIndex.put(submissionIds.get(i), i);
 
-        timed(variant.label(), size, "A", "filter_eq_low", true, () -> {
-            QuerySpec spec = new QuerySpec().addFilter(FilterCondition.eq("shift", "A")).page(0, 100);
-            return store.query(form, fields, spec).size();
-        });
+        runFilterWithFullAndChecksum(variant, size, form, fields, store, idToGenerationIndex,
+                "filter_eq_high", () -> new QuerySpec().addFilter(FilterCondition.eq("part_no", "PN-10500")));
 
-        timed(variant.label(), size, "A", "filter_range_eq", true, () -> {
-            QuerySpec spec = new QuerySpec()
-                    .addFilter(FilterCondition.range("prod_date", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 30)))
-                    .addFilter(FilterCondition.eq("machine", "Machine-5"))
-                    .page(0, 100);
-            return store.query(form, fields, spec).size();
-        });
+        runFilterWithFullAndChecksum(variant, size, form, fields, store, idToGenerationIndex,
+                "filter_eq_low", () -> new QuerySpec().addFilter(FilterCondition.eq("shift", "A")));
 
-        timed(variant.label(), size, "A", "filter_3_fields", true, () -> {
-            QuerySpec spec = new QuerySpec()
-                    .addFilter(FilterCondition.eq("shift", "B"))
-                    .addFilter(FilterCondition.eq("machine", "Machine-10"))
-                    .addFilter(FilterCondition.range("qty_rejected", 5, null))
-                    .page(0, 100);
-            return store.query(form, fields, spec).size();
-        });
+        runFilterWithFullAndChecksum(variant, size, form, fields, store, idToGenerationIndex,
+                "filter_range_eq", () -> new QuerySpec()
+                        .addFilter(FilterCondition.range("prod_date", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 30)))
+                        .addFilter(FilterCondition.eq("machine", "Machine-5")));
+
+        runFilterWithFullAndChecksum(variant, size, form, fields, store, idToGenerationIndex,
+                "filter_3_fields", () -> new QuerySpec()
+                        .addFilter(FilterCondition.eq("shift", "B"))
+                        .addFilter(FilterCondition.eq("machine", "Machine-10"))
+                        .addFilter(FilterCondition.range("qty_rejected", 5, null)));
 
         timed(variant.label(), size, "A", "like_search", true, () -> {
             QuerySpec spec = new QuerySpec().addFilter(FilterCondition.like("remarks", "crack")).page(0, 100);
@@ -239,7 +422,16 @@ class PaperBenchmarkRunner {
 
         timed(variant.label(), size, "A", "aggregate_date", true, () -> aggregateDateMonthly(variant, form, fields));
 
-        timed(variant.label(), size, "A", "count_all", true, () -> (int) store.count(form, fields, new QuerySpec()));
+        // Identical query shape for every strategy (item 4): a bare count against the
+        // shared form_submission header table, independent of where field values live.
+        timed(variant.label(), size, "A", "count_all", true, () -> {
+            Long c = jdbc.queryForObject("SELECT COUNT(*) FROM form_submission WHERE form_id = ?", Long.class, form.getId());
+            return c == null ? 0 : c.intValue();
+        });
+
+        // Per-strategy, by contrast: exercises each store's own filtering code path.
+        timed(variant.label(), size, "A", "count_filtered", true, () ->
+                (int) store.count(form, fields, new QuerySpec().addFilter(FilterCondition.eq("shift", "A"))));
 
         timed(variant.label(), size, "A", "page_first", true, () -> {
             QuerySpec spec = new QuerySpec().sortBy("prod_date", true).page(0, 50);
@@ -255,6 +447,54 @@ class PaperBenchmarkRunner {
             QuerySpec spec = new QuerySpec().ownerId(ownerUserIds[0]).page(0, 50);
             return store.query(form, fields, spec).size();
         });
+    }
+
+    // key = size + "|" + filterName -> checksum computed by the FIRST variant to run it for that cell group.
+    private final Map<String, String> referenceChecksums = new HashMap<>();
+    private final List<String> checksumLog = new ArrayList<>();
+
+    /**
+     * Item 5: measures the page (LIMIT 100) version as usual, then once fetches
+     * EVERY matching row ("_full"), and verifies all 6 variants agree on exactly
+     * which logical rows matched - not by comparing raw submission_id (each variant
+     * has its own independent auto-increment range), but by generation index: row i
+     * generated by PaperDataGenerator always lands at submissionIds.get(i) for every
+     * variant, since every cell reseeds the same fixed seed. A sorted-index checksum
+     * mismatch means two strategies disagree on query semantics - this throws
+     * (fails the run) rather than just logging, per the brief's "fail the run if not".
+     */
+    private void runFilterWithFullAndChecksum(Variant variant, int size, FormDefinition form, List<FormField> fields,
+                                                SubmissionStore store, Map<Long, Integer> idToGenerationIndex,
+                                                String opName, Supplier<QuerySpec> specFactory) {
+        timed(variant.label(), size, "A", opName, true, () -> {
+            QuerySpec spec = specFactory.get().page(0, 100);
+            return store.query(form, fields, spec).size();
+        });
+
+        long start = System.nanoTime();
+        QuerySpec fullSpec = specFactory.get().page(0, size);
+        List<SubmissionRecord> all = store.query(form, fields, fullSpec);
+        long elapsed = System.nanoTime() - start;
+        csvRows.add(csvRow(variant.label(), size, "A", opName + "_full", 1, ms(elapsed), "ms", all.size()));
+
+        List<Integer> indices = all.stream()
+                .map(r -> idToGenerationIndex.get(r.submissionId()))
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+        String checksum = all.size() + ":" + indices.hashCode();
+        String key = size + "|" + opName;
+        String reference = referenceChecksums.get(key);
+        if (reference == null) {
+            referenceChecksums.put(key, checksum);
+            checksumLog.add(key + ": reference set by " + variant.label() + " (n=" + all.size() + ")");
+        } else if (!reference.equals(checksum)) {
+            String msg = key + ": MISMATCH - " + variant.label() + " got checksum " + checksum + " but reference (from an earlier variant) was " + reference;
+            checksumLog.add(msg);
+            throw new ChecksumMismatchException("Cross-strategy result checksum mismatch: " + msg);
+        } else {
+            checksumLog.add(key + ": " + variant.label() + " matches reference (n=" + all.size() + ")");
+        }
     }
 
     private int aggregateDateMonthly(Variant variant, FormDefinition form, List<FormField> fields) {
@@ -347,40 +587,107 @@ class PaperBenchmarkRunner {
 
     // ------------------------------------------------------- schema evolution ----
 
-    private void runSchemaEvolution(Variant variant, int size, FormDefinition form, List<FormField> fields, SubmissionStore store) {
+    private static final int SCENARIO_B_RUNS = 5;
+
+    /**
+     * Item 7: 5 runs per operation, each on its own fresh field (never reusing or
+     * mutating the same one). Item 3: remove_field in two modes - soft (delete the
+     * FormField metadata row only; physical data is left behind, orphaned) and hard
+     * (metadata removed AND the underlying data physically purged: EAV deletes its
+     * form_value rows, JSON runs JSON_REMOVE across every row, RELATIONAL drops the
+     * column). Each remove run first adds+backfills a throwaway field with real data
+     * for every row (untimed setup) so the removal cost reflects removing a
+     * genuinely populated field, not an empty one.
+     */
+    private void runSchemaEvolution(Variant variant, int size, FormDefinition form, List<FormField> fields, SubmissionStore store, int rowCount) {
         long before = store.count(form, fields, new QuerySpec());
 
-        FormField plainField = newField("audit_note", FieldType.TEXT, fields.size(), form);
-        long t0 = System.nanoTime();
-        FormField savedPlain = formFieldRepository.save(plainField);
-        store.onFieldAdded(form, savedPlain);
-        csvRows.add(csvRow(variant.label(), size, "B", "add_field_plain", 1, ms(System.nanoTime() - t0), "ms", 0));
+        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+            FormField plainField = newField("sb_plain_" + i, FieldType.TEXT, fields.size() + 100 + i, form);
+            long t0 = System.nanoTime();
+            FormField saved = formFieldRepository.save(plainField);
+            store.onFieldAdded(form, saved);
+            csvRows.add(csvRow(variant.label(), size, "B", "add_field_plain", i, ms(System.nanoTime() - t0), "ms", 0));
+        }
         verifyReadable(variant, size, "add_field_plain", form, fields, store, before);
 
-        FormField indexedField = newField("audit_flag", FieldType.BOOLEAN, fields.size() + 1, form);
-        if (variant.storageType() != StorageType.EAV) {
-            indexedField.setConfig("{\"indexed\":true}");
+        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+            FormField indexedField = newField("sb_idx_" + i, FieldType.BOOLEAN, fields.size() + 200 + i, form);
+            if (variant.storageType() != StorageType.EAV) {
+                indexedField.setConfig("{\"indexed\":true}");
+            }
+            if (variant.storageType() == StorageType.EAV) {
+                csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", i, "0", "ms", 0));
+            } else {
+                long t1 = System.nanoTime();
+                FormField saved = formFieldRepository.save(indexedField);
+                store.onFieldAdded(form, saved);
+                csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", i, ms(System.nanoTime() - t1), "ms", 0));
+            }
         }
-        long t1 = System.nanoTime();
         if (variant.storageType() == StorageType.EAV) {
-            csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", 1, "0", "ms", 0));
             skipLog.add(variant.label() + "@" + size + " add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag");
-        } else {
-            FormField savedIndexed = formFieldRepository.save(indexedField);
-            store.onFieldAdded(form, savedIndexed);
-            csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", 1, ms(System.nanoTime() - t1), "ms", 0));
         }
         verifyReadable(variant, size, "add_field_indexed", form, fields, store, before);
 
-        long t2 = System.nanoTime();
-        FormField remarksField = byKey(fields, "remarks");
-        store.onFieldRemoved(form, remarksField);
-        csvRows.add(csvRow(variant.label(), size, "B", "remove_field", 1, ms(System.nanoTime() - t2), "ms", 0));
+        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+            FormField field = newField("sb_soft_" + i, FieldType.TEXT, fields.size() + 300 + i, form);
+            FormField saved = formFieldRepository.save(field);
+            store.onFieldAdded(form, saved);
+            backfillField(variant, form, saved);
+            long t = System.nanoTime();
+            formFieldRepository.delete(saved); // soft: metadata only, data left orphaned in storage
+            csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, ms(System.nanoTime() - t), "ms", 0));
+        }
+        verifyReadable(variant, size, "remove_field_soft", form, fields, store, before);
 
-        long t3 = System.nanoTime();
-        remarksField.setLabel("Remarks (renamed)");
-        formFieldRepository.save(remarksField);
-        csvRows.add(csvRow(variant.label(), size, "B", "rename_label", 1, ms(System.nanoTime() - t3), "ms", 0));
+        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+            FormField field = newField("sb_hard_" + i, FieldType.TEXT, fields.size() + 400 + i, form);
+            FormField saved = formFieldRepository.save(field);
+            store.onFieldAdded(form, saved);
+            backfillField(variant, form, saved);
+            long t = System.nanoTime();
+            hardRemoveField(variant, form, store, saved);
+            formFieldRepository.delete(saved);
+            csvRows.add(csvRow(variant.label(), size, "B", "remove_field_hard", i, ms(System.nanoTime() - t), "ms", rowCount));
+        }
+        verifyReadable(variant, size, "remove_field_hard", form, fields, store, before);
+
+        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+            FormField field = newField("sb_rename_" + i, FieldType.TEXT, fields.size() + 500 + i, form);
+            FormField saved = formFieldRepository.save(field);
+            store.onFieldAdded(form, saved);
+            long t = System.nanoTime();
+            saved.setLabel("Renamed " + i);
+            formFieldRepository.save(saved);
+            csvRows.add(csvRow(variant.label(), size, "B", "rename_label", i, ms(System.nanoTime() - t), "ms", 0));
+        }
+    }
+
+    /** Populates a freshly-added field with a real value for every existing row, untimed (setup, not measured). */
+    private void backfillField(Variant variant, FormDefinition form, FormField field) {
+        switch (variant.storageType()) {
+            case EAV -> jdbc.update(
+                    "INSERT INTO form_value (submission_id, field_id, value_text) SELECT id, ?, 'x' FROM form_submission WHERE form_id = ?",
+                    field.getId(), form.getId());
+            case JSON -> jdbc.update(
+                    "UPDATE form_submission_json j JOIN form_submission fs ON fs.id = j.submission_id " +
+                            "SET j.data = JSON_SET(j.data, ?, 'x') WHERE fs.form_id = ?",
+                    "$." + field.getFieldKey(), form.getId());
+            case RELATIONAL -> jdbc.update(
+                    "UPDATE form_data_" + form.getId() + " SET " + field.relationalColumnName() + " = 'x'");
+        }
+    }
+
+    /** Item 3 "hard" mode: physically purge the field's data, not just its metadata. */
+    private void hardRemoveField(Variant variant, FormDefinition form, SubmissionStore store, FormField field) {
+        if (variant.storageType() == StorageType.JSON) {
+            jdbc.update(
+                    "UPDATE form_submission_json j JOIN form_submission fs ON fs.id = j.submission_id " +
+                            "SET j.data = JSON_REMOVE(j.data, ?) WHERE fs.form_id = ?",
+                    "$." + field.getFieldKey(), form.getId());
+        }
+        store.onFieldRemoved(form, field); // EAV: DELETE rows. RELATIONAL: DROP COLUMN. JSON: drops the generated column/index if any.
     }
 
     private void verifyReadable(Variant variant, int size, String afterOp, FormDefinition form, List<FormField> fields, SubmissionStore store, long expectedCount) {
@@ -431,6 +738,108 @@ class PaperBenchmarkRunner {
     }
 
     // -------------------------------------------------------------- teardown ----
+
+    // -------------------------------------------------------------- explain ----
+
+    /**
+     * Item 8, scoped down (see REPORT.md "Scope decisions"): full EXPLAIN ANALYZE
+     * coverage of every read op x every variant would need each store to expose its
+     * raw SQL, a larger refactor than this phase's time budget allows. Captured
+     * instead for the four operations this run's own results flagged as anomalous
+     * or architecturally significant: find_by_id (baseline), filter_eq_low (the
+     * JSON_IDX "indexing made it slower" anomaly), aggregate_date, and page_first
+     * (EAV's correlated-subquery-vs-join sort difference). Reconstructs literal SQL
+     * directly here using the same table/column naming conventions the stores use -
+     * acceptable duplication for an analysis-only diagnostic, not production code.
+     */
+    private void captureExplain(Variant variant, int size, FormDefinition form, List<FormField> fields, long[] ownerUserIds) {
+        try {
+            Files.createDirectories(Path.of("benchmarks", "results", "explain"));
+        } catch (IOException e) {
+            skipLog.add("Could not create explain/ directory: " + e);
+            return;
+        }
+        captureExplainOne(variant, size, form, "find_by_id", explainFindById(variant, form, fields));
+        captureExplainOne(variant, size, form, "filter_eq_low", explainFilterEqLow(variant, form, fields));
+        captureExplainOne(variant, size, form, "aggregate_date", explainAggregateDate(variant, form, fields));
+        captureExplainOne(variant, size, form, "page_first", explainPageFirst(variant, form, fields));
+    }
+
+    private void captureExplainOne(Variant variant, int size, FormDefinition form, String op, String sql) {
+        if (sql == null) return;
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList("EXPLAIN ANALYZE " + sql);
+            StringBuilder out = new StringBuilder();
+            out.append("-- ").append(variant.label()).append(" @ ").append(size).append(" : ").append(op).append("\n");
+            out.append("-- SQL: ").append(sql).append("\n\n");
+            for (Map<String, Object> row : rows) {
+                row.values().forEach(v -> out.append(v).append("\n"));
+            }
+            Path file = Path.of("benchmarks", "results", "explain", variant.label() + "_" + size + "_" + op + ".txt");
+            Files.writeString(file, out.toString());
+        } catch (Exception e) {
+            skipLog.add(variant.label() + "@" + size + " EXPLAIN ANALYZE for " + op + " failed: " + e);
+        }
+    }
+
+    private String explainFindById(Variant variant, FormDefinition form, List<FormField> fields) {
+        return switch (variant.storageType()) {
+            case EAV -> "SELECT field_id, value_text, value_num, value_date, value_bool FROM form_value WHERE submission_id = " + midSubmissionIdPlaceholder(form);
+            case JSON -> "SELECT data FROM form_submission_json WHERE submission_id = " + midSubmissionIdPlaceholder(form);
+            case RELATIONAL -> "SELECT * FROM form_data_" + form.getId() + " WHERE submission_id = " + midSubmissionIdPlaceholder(form);
+        };
+    }
+
+    private String explainFilterEqLow(Variant variant, FormDefinition form, List<FormField> fields) {
+        FormField shiftField = byKey(fields, "shift");
+        return switch (variant.storageType()) {
+            case EAV -> "SELECT fs.id FROM form_submission fs JOIN form_value fv0 ON fv0.submission_id = fs.id AND fv0.field_id = " +
+                    shiftField.getId() + " AND fv0.value_text = 'A' WHERE fs.form_id = " + form.getId();
+            case JSON -> "SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id " +
+                    "WHERE fs.form_id = " + form.getId() + " AND j.data->>'$.shift' = 'A'";
+            case RELATIONAL -> "SELECT submission_id FROM form_data_" + form.getId() + " WHERE shift_col_placeholder = 'A'"
+                    .replace("shift_col_placeholder", shiftField.relationalColumnName());
+        };
+    }
+
+    private String explainAggregateDate(Variant variant, FormDefinition form, List<FormField> fields) {
+        FormField dateField = byKey(fields, "prod_date");
+        FormField weightField = byKey(fields, "total_weight");
+        return switch (variant.storageType()) {
+            case EAV -> "SELECT DATE_FORMAT(d.value_date,'%Y-%m') ym, SUM(w.value_num) FROM form_value d " +
+                    "JOIN form_value w ON w.submission_id = d.submission_id AND w.field_id = " + weightField.getId() +
+                    " WHERE d.field_id = " + dateField.getId() +
+                    " AND d.value_date BETWEEN '2026-01-01' AND '2026-12-31' GROUP BY ym";
+            case JSON -> "SELECT DATE_FORMAT(j.data->>'$.prod_date','%Y-%m') ym, SUM(CAST(j.data->>'$.total_weight' AS DECIMAL(20,6))) " +
+                    "FROM form_submission_json j JOIN form_submission fs ON fs.id = j.submission_id " +
+                    "WHERE fs.form_id = " + form.getId() +
+                    " AND j.data->>'$.prod_date' BETWEEN '2026-01-01' AND '2026-12-31' GROUP BY ym";
+            case RELATIONAL -> "SELECT DATE_FORMAT(" + dateField.relationalColumnName() + ",'%Y-%m') ym, SUM(" + weightField.relationalColumnName() + ") " +
+                    "FROM form_data_" + form.getId() +
+                    " WHERE " + dateField.relationalColumnName() + " BETWEEN '2026-01-01' AND '2026-12-31' GROUP BY ym";
+        };
+    }
+
+    private String explainPageFirst(Variant variant, FormDefinition form, List<FormField> fields) {
+        FormField dateField = byKey(fields, "prod_date");
+        return switch (variant.storageType()) {
+            case EAV -> variant.storeOverride() != null
+                    ? "SELECT fs.id FROM form_submission fs WHERE fs.form_id = " + form.getId() +
+                    " ORDER BY (SELECT value_date FROM form_value WHERE submission_id = fs.id AND field_id = " + dateField.getId() + ") DESC LIMIT 50"
+                    : "SELECT fs.id FROM form_submission fs LEFT JOIN form_value sortv ON sortv.submission_id = fs.id AND sortv.field_id = " +
+                    dateField.getId() + " WHERE fs.form_id = " + form.getId() + " ORDER BY sortv.value_date DESC LIMIT 50";
+            case JSON -> "SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id " +
+                    "WHERE fs.form_id = " + form.getId() + " ORDER BY j.data->>'$.prod_date' DESC LIMIT 50";
+            case RELATIONAL -> "SELECT submission_id FROM form_data_" + form.getId() +
+                    " ORDER BY " + dateField.relationalColumnName() + " DESC LIMIT 50";
+        };
+    }
+
+    private String midSubmissionIdPlaceholder(FormDefinition form) {
+        Long id = jdbc.queryForObject("SELECT id FROM form_submission WHERE form_id = ? ORDER BY id LIMIT 1 OFFSET " +
+                "(SELECT COUNT(*) FROM form_submission WHERE form_id = ?) DIV 2", Long.class, form.getId(), form.getId());
+        return String.valueOf(id);
+    }
 
     private void teardownCell(Variant variant, FormDefinition form) {
         switch (variant.storageType()) {
@@ -548,10 +957,19 @@ class PaperBenchmarkRunner {
 
         writeSummary(resultsDir);
 
+        Path integrityCsv = resultsDir.resolve("integrity.csv");
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(integrityCsv))) {
+            writer.println("variant,violation_type,attempts,rejected,accepted");
+            for (String[] row : integrityRows) writer.println(String.join(",", row));
+        }
+
         Path logPath = resultsDir.resolve("run_log.txt");
         try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(logPath))) {
             writer.println("Variant order per size:");
             orderLog.forEach(writer::println);
+            writer.println();
+            writer.println("Cross-strategy result checksums (item 5):");
+            checksumLog.forEach(writer::println);
             writer.println();
             writer.println("Skips/anomalies during run:");
             skipLog.forEach(writer::println);

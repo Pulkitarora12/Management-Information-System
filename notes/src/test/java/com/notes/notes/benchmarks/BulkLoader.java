@@ -29,8 +29,11 @@ class BulkLoader {
         this.jdbc = jdbc;
     }
 
-    /** Batch-inserts `count` form_submission header rows and returns their generated ids, in order. */
-    List<Long> batchInsertHeaders(long formId, int formVersion, int count, long[] ownerUserIds, java.util.Random random) {
+    record HeaderBatch(List<Long> submissionIds, List<Long> ownerIds) {
+    }
+
+    /** Batch-inserts `count` form_submission header rows; returns generated ids and the owner used for each, in order. */
+    HeaderBatch batchInsertHeaders(long formId, int formVersion, int count, long[] ownerUserIds, java.util.Random random) {
         Long maxIdBefore = jdbc.queryForObject("SELECT COALESCE(MAX(id), 0) FROM form_submission", Long.class);
         List<Object[]> args = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -38,9 +41,16 @@ class BulkLoader {
             args.add(new Object[]{formId, formVersion, owner});
         }
         jdbc.batchUpdate("INSERT INTO form_submission (form_id, form_version, created_by) VALUES (?, ?, ?)", args);
-        return jdbc.queryForList(
-                "SELECT id FROM form_submission WHERE form_id = ? AND id > ? ORDER BY id",
-                Long.class, formId, maxIdBefore);
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id, created_by FROM form_submission WHERE form_id = ? AND id > ? ORDER BY id",
+                formId, maxIdBefore);
+        List<Long> ids = new ArrayList<>(rows.size());
+        List<Long> owners = new ArrayList<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            ids.add(((Number) row.get("id")).longValue());
+            owners.add(((Number) row.get("created_by")).longValue());
+        }
+        return new HeaderBatch(ids, owners);
     }
 
     void batchInsertEav(List<Long> submissionIds, List<FormField> fields, List<Map<String, Object>> rows) {
@@ -76,23 +86,24 @@ class BulkLoader {
         jdbc.batchUpdate("INSERT INTO form_submission_json (submission_id, data) VALUES (?, CAST(? AS JSON))", args);
     }
 
-    void batchInsertRelational(long formId, List<Long> submissionIds, List<FormField> fields, List<Map<String, Object>> rows) {
+    void batchInsertRelational(long formId, List<Long> submissionIds, List<Long> ownerIds, List<FormField> fields, List<Map<String, Object>> rows) {
         String table = "form_data_" + formId;
-        StringBuilder sql = new StringBuilder("INSERT INTO ").append(table).append(" (submission_id");
+        StringBuilder sql = new StringBuilder("INSERT INTO ").append(table).append(" (submission_id, created_by");
         for (FormField field : fields) {
             sql.append(", ").append(field.relationalColumnName());
         }
-        sql.append(") VALUES (?");
+        sql.append(") VALUES (?, ?");
         sql.append(", ?".repeat(fields.size()));
         sql.append(")");
 
         List<Object[]> args = new ArrayList<>(submissionIds.size());
         for (int i = 0; i < submissionIds.size(); i++) {
             Map<String, Object> values = rows.get(i);
-            Object[] rowArgs = new Object[fields.size() + 1];
+            Object[] rowArgs = new Object[fields.size() + 2];
             rowArgs[0] = submissionIds.get(i);
+            rowArgs[1] = ownerIds.get(i);
             for (int f = 0; f < fields.size(); f++) {
-                rowArgs[f + 1] = convert(values.get(fields.get(f).getFieldKey()), fields.get(f).getType());
+                rowArgs[f + 2] = convert(values.get(fields.get(f).getFieldKey()), fields.get(f).getType());
             }
             args.add(rowArgs);
         }
