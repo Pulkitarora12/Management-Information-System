@@ -1,0 +1,6 @@
+-- RELATIONAL @ 100000 : page_first
+-- SQL: SELECT submission_id FROM form_data_99 ORDER BY f_1991 DESC LIMIT 50
+
+-> Limit: 50 row(s)  (cost=0.12 rows=50) (actual time=0.0638..0.0892 rows=50 loops=1)
+    -> Covering index scan on form_data_99 using idx_f_1991 (reverse)  (cost=0.12 rows=50) (actual time=0.0628..0.0847 rows=50 loops=1)
+

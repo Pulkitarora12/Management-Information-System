@@ -1,0 +1,5 @@
+-- RELATIONAL @ 100000 : find_by_id
+-- SQL: SELECT * FROM form_data_99 WHERE submission_id = 1908964
+
+-> Rows fetched before execution  (cost=0..0 rows=1) (actual time=400e-6..600e-6 rows=1 loops=1)
+

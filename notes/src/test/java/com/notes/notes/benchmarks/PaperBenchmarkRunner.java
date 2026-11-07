@@ -47,7 +47,7 @@ class PaperBenchmarkRunner {
     }
 
 
-    private static final int[] SIZES = {10_000, 100_000};
+    private static final int[] SIZES = {10_000, 25_000, 50_000, 100_000};
     private static final int WARMUP_READS = 3;
     private static final int TIMED_READS = 10;
     private static final int WARMUP_WRITES = 1;
@@ -169,7 +169,7 @@ class PaperBenchmarkRunner {
             System.out.println("=== Scenario E: " + variant.label() + " (elapsed so far: " + minutesSoFar() + " min) ===");
             switch (variant.storageType()) {
                 case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
-                case JSON -> jdbc.execute("TRUNCATE TABLE form_submission_json");
+                case JSON -> resetJsonTable();
                 default -> { }
             }
             List<FormField> fields = buildFields(variant.indexedKeys());
@@ -310,7 +310,7 @@ class PaperBenchmarkRunner {
         // per-form (CREATE TABLE in onFormCreated), already isolated.
         switch (variant.storageType()) {
             case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
-            case JSON -> jdbc.execute("TRUNCATE TABLE form_submission_json");
+            case JSON -> resetJsonTable();
             case RELATIONAL -> { /* isolated per-form table already */ }
         }
 
@@ -602,65 +602,96 @@ class PaperBenchmarkRunner {
     private void runSchemaEvolution(Variant variant, int size, FormDefinition form, List<FormField> fields, SubmissionStore store, int rowCount) {
         long before = store.count(form, fields, new QuerySpec());
 
-        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
-            FormField plainField = newField("sb_plain_" + i, FieldType.TEXT, fields.size() + 100 + i, form);
-            long t0 = System.nanoTime();
-            FormField saved = formFieldRepository.save(plainField);
-            store.onFieldAdded(form, saved);
-            csvRows.add(csvRow(variant.label(), size, "B", "add_field_plain", i, ms(System.nanoTime() - t0), "ms", 0));
-        }
+        schemaEvolutionPhase(variant, size, "add_field_plain", () -> {
+            for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+                FormField plainField = newField("sb_plain_" + i, FieldType.TEXT, fields.size() + 100 + i, form);
+                long t0 = System.nanoTime();
+                FormField saved = formFieldRepository.save(plainField);
+                store.onFieldAdded(form, saved);
+                csvRows.add(csvRow(variant.label(), size, "B", "add_field_plain", i, ms(System.nanoTime() - t0), "ms", 0));
+            }
+        });
         verifyReadable(variant, size, "add_field_plain", form, fields, store, before);
 
-        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
-            FormField indexedField = newField("sb_idx_" + i, FieldType.BOOLEAN, fields.size() + 200 + i, form);
-            if (variant.storageType() != StorageType.EAV) {
-                indexedField.setConfig("{\"indexed\":true}");
+        schemaEvolutionPhase(variant, size, "add_field_indexed", () -> {
+            for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+                FormField indexedField = newField("sb_idx_" + i, FieldType.BOOLEAN, fields.size() + 200 + i, form);
+                if (variant.storageType() != StorageType.EAV) {
+                    indexedField.setConfig("{\"indexed\":true}");
+                }
+                if (variant.storageType() == StorageType.EAV) {
+                    csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", i, "0", "ms", 0));
+                } else {
+                    long t1 = System.nanoTime();
+                    FormField saved = formFieldRepository.save(indexedField);
+                    store.onFieldAdded(form, saved);
+                    csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", i, ms(System.nanoTime() - t1), "ms", 0));
+                }
             }
-            if (variant.storageType() == StorageType.EAV) {
-                csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", i, "0", "ms", 0));
-            } else {
-                long t1 = System.nanoTime();
-                FormField saved = formFieldRepository.save(indexedField);
-                store.onFieldAdded(form, saved);
-                csvRows.add(csvRow(variant.label(), size, "B", "add_field_indexed", i, ms(System.nanoTime() - t1), "ms", 0));
-            }
-        }
+        });
         if (variant.storageType() == StorageType.EAV) {
             skipLog.add(variant.label() + "@" + size + " add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag");
         }
         verifyReadable(variant, size, "add_field_indexed", form, fields, store, before);
 
-        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
-            FormField field = newField("sb_soft_" + i, FieldType.TEXT, fields.size() + 300 + i, form);
-            FormField saved = formFieldRepository.save(field);
-            store.onFieldAdded(form, saved);
-            backfillField(variant, form, saved);
-            long t = System.nanoTime();
-            formFieldRepository.delete(saved); // soft: metadata only, data left orphaned in storage
-            csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, ms(System.nanoTime() - t), "ms", 0));
-        }
+        schemaEvolutionPhase(variant, size, "remove_field_soft", () -> {
+            for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+                FormField field = newField("sb_soft_" + i, FieldType.TEXT, fields.size() + 300 + i, form);
+                FormField saved = formFieldRepository.save(field);
+                store.onFieldAdded(form, saved);
+                backfillField(variant, form, saved);
+                long t = System.nanoTime();
+                try {
+                    formFieldRepository.delete(saved); // soft: metadata only, data left orphaned in storage
+                    csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, ms(System.nanoTime() - t), "ms", 0));
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    // EAV genuine finding: form_value.field_id has an FK to form_field.id, so a
+                    // field can never be metadata-only-removed while its value rows still exist -
+                    // "soft" removal is structurally impossible here, not a bug to work around.
+                    csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, "0", "ms", 0));
+                    if (i == 1) {
+                        skipLog.add(variant.label() + "@" + size + " remove_field_soft: n/a - form_value's FK to form_field prevents metadata-only removal while value rows exist (genuine EAV finding, not an error)");
+                    }
+                    // the field row + its orphaned-attempt data stay in place; next loop iteration's
+                    // fresh field is unaffected since it uses its own new field_id.
+                }
+            }
+        });
         verifyReadable(variant, size, "remove_field_soft", form, fields, store, before);
 
-        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
-            FormField field = newField("sb_hard_" + i, FieldType.TEXT, fields.size() + 400 + i, form);
-            FormField saved = formFieldRepository.save(field);
-            store.onFieldAdded(form, saved);
-            backfillField(variant, form, saved);
-            long t = System.nanoTime();
-            hardRemoveField(variant, form, store, saved);
-            formFieldRepository.delete(saved);
-            csvRows.add(csvRow(variant.label(), size, "B", "remove_field_hard", i, ms(System.nanoTime() - t), "ms", rowCount));
-        }
+        schemaEvolutionPhase(variant, size, "remove_field_hard", () -> {
+            for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+                FormField field = newField("sb_hard_" + i, FieldType.TEXT, fields.size() + 400 + i, form);
+                FormField saved = formFieldRepository.save(field);
+                store.onFieldAdded(form, saved);
+                backfillField(variant, form, saved);
+                long t = System.nanoTime();
+                hardRemoveField(variant, form, store, saved);
+                formFieldRepository.delete(saved);
+                csvRows.add(csvRow(variant.label(), size, "B", "remove_field_hard", i, ms(System.nanoTime() - t), "ms", rowCount));
+            }
+        });
         verifyReadable(variant, size, "remove_field_hard", form, fields, store, before);
 
-        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
-            FormField field = newField("sb_rename_" + i, FieldType.TEXT, fields.size() + 500 + i, form);
-            FormField saved = formFieldRepository.save(field);
-            store.onFieldAdded(form, saved);
-            long t = System.nanoTime();
-            saved.setLabel("Renamed " + i);
-            formFieldRepository.save(saved);
-            csvRows.add(csvRow(variant.label(), size, "B", "rename_label", i, ms(System.nanoTime() - t), "ms", 0));
+        schemaEvolutionPhase(variant, size, "rename_label", () -> {
+            for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+                FormField field = newField("sb_rename_" + i, FieldType.TEXT, fields.size() + 500 + i, form);
+                FormField saved = formFieldRepository.save(field);
+                store.onFieldAdded(form, saved);
+                long t = System.nanoTime();
+                saved.setLabel("Renamed " + i);
+                formFieldRepository.save(saved);
+                csvRows.add(csvRow(variant.label(), size, "B", "rename_label", i, ms(System.nanoTime() - t), "ms", 0));
+            }
+        });
+    }
+
+    /** A failure in one Scenario B phase must never take down the rest - each is independent. */
+    private void schemaEvolutionPhase(Variant variant, int size, String phase, Runnable work) {
+        try {
+            work.run();
+        } catch (Exception e) {
+            skipLog.add(variant.label() + "@" + size + " Scenario B phase '" + phase + "' FAILED: " + e);
         }
     }
 
@@ -759,10 +790,19 @@ class PaperBenchmarkRunner {
             skipLog.add("Could not create explain/ directory: " + e);
             return;
         }
-        captureExplainOne(variant, size, form, "find_by_id", explainFindById(variant, form, fields));
-        captureExplainOne(variant, size, form, "filter_eq_low", explainFilterEqLow(variant, form, fields));
-        captureExplainOne(variant, size, form, "aggregate_date", explainAggregateDate(variant, form, fields));
-        captureExplainOne(variant, size, form, "page_first", explainPageFirst(variant, form, fields));
+        captureExplainSafely(variant, size, form, "find_by_id", () -> explainFindById(variant, form, fields));
+        captureExplainSafely(variant, size, form, "filter_eq_low", () -> explainFilterEqLow(variant, form, fields));
+        captureExplainSafely(variant, size, form, "aggregate_date", () -> explainAggregateDate(variant, form, fields));
+        captureExplainSafely(variant, size, form, "page_first", () -> explainPageFirst(variant, form, fields));
+    }
+
+    /** A failure building or running any one EXPLAIN query must never take down the whole cell's real measurements. */
+    private void captureExplainSafely(Variant variant, int size, FormDefinition form, String op, Supplier<String> sqlBuilder) {
+        try {
+            captureExplainOne(variant, size, form, op, sqlBuilder.get());
+        } catch (Exception e) {
+            skipLog.add(variant.label() + "@" + size + " EXPLAIN ANALYZE for " + op + " (building SQL) failed: " + e);
+        }
     }
 
     private void captureExplainOne(Variant variant, int size, FormDefinition form, String op, String sql) {
@@ -836,15 +876,33 @@ class PaperBenchmarkRunner {
     }
 
     private String midSubmissionIdPlaceholder(FormDefinition form) {
-        Long id = jdbc.queryForObject("SELECT id FROM form_submission WHERE form_id = ? ORDER BY id LIMIT 1 OFFSET " +
-                "(SELECT COUNT(*) FROM form_submission WHERE form_id = ?) DIV 2", Long.class, form.getId(), form.getId());
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM form_submission WHERE form_id = ?", Long.class, form.getId());
+        long offset = (count == null ? 0 : count) / 2;
+        Long id = jdbc.queryForObject("SELECT id FROM form_submission WHERE form_id = ? ORDER BY id LIMIT 1 OFFSET " + offset,
+                Long.class, form.getId());
         return String.valueOf(id);
+    }
+
+    /**
+     * TRUNCATE alone only resets data, not schema - JSON's generated
+     * columns/indexes added during Scenario B (onFieldAdded for indexed fields)
+     * persist across cells since they're DDL on this shared table. Without this,
+     * indexes accumulate cell over cell until MySQL's 64-key-per-table limit is
+     * hit (a real failure caught during this run's own smoke test). DROP+CREATE
+     * matches V4__forms.sql's definition exactly, for full isolation.
+     */
+    private void resetJsonTable() {
+        jdbc.execute("DROP TABLE IF EXISTS form_submission_json");
+        jdbc.execute("CREATE TABLE form_submission_json (" +
+                "submission_id BIGINT NOT NULL, data JSON NOT NULL, PRIMARY KEY (submission_id), " +
+                "CONSTRAINT fk_form_submission_json_submission FOREIGN KEY (submission_id) REFERENCES form_submission (id)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
     }
 
     private void teardownCell(Variant variant, FormDefinition form) {
         switch (variant.storageType()) {
             case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
-            case JSON -> jdbc.execute("TRUNCATE TABLE form_submission_json");
+            case JSON -> resetJsonTable();
             case RELATIONAL -> jdbc.execute("DROP TABLE IF EXISTS form_data_" + form.getId());
         }
         jdbc.update("DELETE FROM form_submission WHERE form_id = ?", form.getId());

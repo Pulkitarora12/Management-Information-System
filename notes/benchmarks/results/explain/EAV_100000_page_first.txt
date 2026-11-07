@@ -1,0 +1,10 @@
+-- EAV @ 100000 : page_first
+-- SQL: SELECT fs.id FROM form_submission fs LEFT JOIN form_value sortv ON sortv.submission_id = fs.id AND sortv.field_id = 2065 WHERE fs.form_id = 101 ORDER BY sortv.value_date DESC LIMIT 50
+
+-> Limit: 50 row(s)  (actual time=10346..10346 rows=50 loops=1)
+    -> Sort: sortv.value_date DESC, limit input to 50 row(s) per chunk  (actual time=10346..10346 rows=50 loops=1)
+        -> Stream results  (cost=87321 rows=188654) (actual time=8.62..10311 rows=100012 loops=1)
+            -> Nested loop left join  (cost=87321 rows=188654) (actual time=8.61..10247 rows=100012 loops=1)
+                -> Covering index lookup on fs using idx_form_submission_form_id (form_id=101)  (cost=19095 rows=188654) (actual time=3.64..253 rows=100012 loops=1)
+                -> Single-row index lookup on sortv using uk_form_value_submission_field (submission_id=fs.id, field_id=2065)  (cost=0.262 rows=1) (actual time=0.0995..0.0996 rows=1 loops=100012)
+
