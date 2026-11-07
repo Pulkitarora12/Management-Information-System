@@ -1,0 +1,9 @@
+-- JSON_IDX_BP1G @ 100000 : page_first
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 290 ORDER BY j.data->>'$.prod_date' DESC LIMIT 50
+
+-> Limit: 50 row(s)  (cost=24608 rows=49.9) (actual time=0.11..0.552 rows=50 loops=1)
+    -> Nested loop inner join  (cost=24608 rows=49.9) (actual time=0.109..0.544 rows=50 loops=1)
+        -> Index scan on j using idx_gc_4758 (reverse)  (cost=0.795 rows=146) (actual time=0.0882..0.349 rows=50 loops=1)
+        -> Filter: (fs.form_id = 290)  (cost=0.25 rows=0.342) (actual time=0.00338..0.00354 rows=1 loops=50)
+            -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00305..0.00311 rows=1 loops=50)
+

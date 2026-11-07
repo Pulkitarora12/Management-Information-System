@@ -1,6 +1,6 @@
 # Storage Strategy Benchmark — Final Report (10k / 25k / 50k / 100k)
 
-**Status: complete except buffer-pool sensitivity (blocked, see below).** This supersedes the pre-fairness-fix report and both earlier interim versions. All 4 sizes × all 6 variants × Scenario A (read/write) + Scenario B (schema evolution) + Scenario E (integrity, 10k) are present in `summary.csv`/`raw_paper.csv`/`integrity.csv`. `explain/` has the full 24 files (6 variants × 4 ops) at 100k. High-variance cells have been rerun at n=20, `bulk_load_total` is now measured 3x per cell, and environment/SQL-mode facts are recorded.
+**Status: complete, including buffer-pool sensitivity.** This supersedes the pre-fairness-fix report and all earlier interim versions. All 4 sizes × all 6 variants × Scenario A (read/write) + Scenario B (schema evolution) + Scenario E (integrity, 10k) are present in `summary.csv`/`raw_paper.csv`/`integrity.csv`. `explain/` has the full 24 files (6 variants × 4 ops) at 100k. High-variance cells have been rerun at n=20, `bulk_load_total` is now measured 3x per cell, environment/SQL-mode facts are recorded, and the buffer-pool sensitivity pass (all 6 variants × 50k/100k under `innodb_buffer_pool_size=1G`) is complete.
 
 Variants: `EAV`, `EAV_NAIVE` (pre-fix correlated-subquery sort, kept as comparison baseline), `JSON` (no indexes), `JSON_IDX` (generated columns + indexes on part_no/prod_date/shift/machine/created_by), `JSON_IDX_LOW` (index on shift only), `RELATIONAL` (typed columns + indexes on part_no/prod_date/shift/machine/created_by).
 
@@ -12,33 +12,35 @@ All tables show **mean ± std, p95** in milliseconds unless noted. `_full` filte
 |---|---|
 | MySQL version | 8.0.42 |
 | SQL mode | `ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION` |
-| innodb_buffer_pool_size (default, used for all results below) | 128M |
-| innodb_buffer_pool_size (bp1g target, not yet run — see below) | 1G |
+| innodb_buffer_pool_size (default, used for all results except the bp1g section below) | 128M |
+| innodb_buffer_pool_size (bp1g comparison pass below) | 1G |
 | Java version | 17 |
 | OS | Windows 11 |
 
 Also written to `results/environment.csv`.
 
-## Open item: buffer-pool sensitivity (item 1) — BLOCKED, not executed
+## Buffer-pool sensitivity (item 1) — done
 
-This requires editing `my.ini`'s `innodb_buffer_pool_size` and restarting the Windows `MySQL80` service twice (once to 1G, once back to 128M). Both `net stop MySQL80` (via Bash) and `Stop-Service`/`net stop` (via PowerShell) returned **"System error 5 has occurred. Access is denied"** in this environment — the session has no OS-level permission to control Windows services, and there is no way to elevate non-interactively. Rather than attempt a riskier workaround (e.g. killing the `mysqld` process directly, which could corrupt the live `mis_bench`/`mis`/`mis_test` data directory on an unclean shutdown), this item was left undone.
+All 6 variants were rerun at 50k and 100k under `innodb_buffer_pool_size=1G` (8x the default 128M), set dynamically via `SET GLOBAL` (confirmed via `SHOW VARIABLES` immediately before the run) rather than a config-file edit + service restart — MySQL has supported resizing `innodb_buffer_pool_size` online since 5.7, so no restart was needed. Results are tagged `_BP1G` in `summary.csv`/`raw_paper.csv` and do not overwrite the default-buffer-pool rows. Total runtime: 43.8 min. The buffer pool was restored to 128M (`SET GLOBAL innodb_buffer_pool_size = 134217728`, confirmed via `SHOW VARIABLES`) immediately after.
 
-The code to run it is already written and tested for compilation (`runBufferPoolSensitivity()` in `PaperBenchmarkRunner.java`) — it tags results with a `_BP1G` label suffix so they land as separate rows in `summary.csv` without colliding with the default-buffer-pool data, and logs a seeded shuffle order per size to `run_log.txt`. **To complete this item**, from an elevated (Administrator) terminal:
+**The four flagged 50k→100k jump cells, default (128M) vs bp1g (1G):**
 
-```
-# 1. Edit C:\ProgramData\MySQL\MySQL Server 8.0\my.ini: innodb_buffer_pool_size=1G
-net stop MySQL80 && net start MySQL80
-mysql -u root -p -e "SHOW VARIABLES LIKE 'innodb_buffer_pool_size'"   # confirm ~1073741824
+| Cell | 50k default | 50k bp1g | 100k default | 100k bp1g | 50k→100k ratio (default) | 50k→100k ratio (bp1g) | Verdict |
+|---|---|---|---|---|---|---|---|
+| EAV `aggregate_group` | 2431.26±42.22 | 1752.87±27.11 | 22746.68±1570.27 | 3695.14±62.32 | 9.36x | 2.11x | **Buffer-pool artifact** |
+| EAV `page_first` | 659.75±24.07 | 395.38±11.90 | 7598.62±509.09 | 836.98±31.61 | 11.52x | 2.12x | **Buffer-pool artifact** |
+| EAV `remove_field_hard` | 2359.99±102.53 | 2392.25±37.66 | 14568.06±880.96 | 5488.95±446.52 | 6.17x | 2.29x | **Mostly buffer-pool, partly inherent** |
+| JSON_IDX `export_full` | 3278.16±157.62 | 4542.52±138.82 | 12558.75±85.55 | 18214.64±248.08 | 3.83x | 4.01x | **Inherent to the algorithm — NOT a buffer-pool artifact** |
 
-cd notes/notes
-mvn test -Dtest=PaperBenchmarkRunner#runBufferPoolSensitivity -DfailIfNoTests=false
+**Interpretation, per cell:**
 
-# 2. Revert my.ini: innodb_buffer_pool_size=128M
-net stop MySQL80 && net start MySQL80
-mysql -u root -p -e "SHOW VARIABLES LIKE 'innodb_buffer_pool_size'"   # confirm back to 134217728
-```
+- **EAV `aggregate_group`** and **EAV `page_first`**: the 100k jump shrinks dramatically under more memory (9.4x→2.1x, 11.5x→2.1x) — at 100k rows, EAV's working set (the tall `form_value` table plus its indexes, ~228MB total at 100k per the storage table above) simply didn't fit in a 128M buffer pool, forcing disk I/O that a 1G pool avoids. This is a genuine **memory-pressure artifact**, not something inherent to EAV's query logic — the remaining ~2x growth at bp1g still reflects EAV's real per-field-JOIN cost scaling with row count, just without the added disk-thrashing penalty.
+- **EAV `remove_field_hard`**: shrinks substantially (6.2x→2.3x) but not as cleanly as the two above — a `DELETE FROM form_value WHERE field_id=?` affecting ~100k rows has an irreducible cost that scales with row count regardless of memory (each row still needs to be located and removed, and index maintenance still happens), so this is a mix: buffer pool explains most of the disproportionate growth, but some growth is structurally unavoidable for a row-by-row delete.
+- **JSON_IDX `export_full`**: the ratio is essentially unchanged (3.83x vs 4.01x) and the **absolute time got worse** under more memory (12.6s→18.2s at 100k). More RAM did not help at all here — this strongly suggests `export_full`'s cost for JSON_IDX is CPU-bound (JSON parsing/serialization of every row's blob into the export format), not I/O-bound, so buffer pool size is irrelevant to it. This is **inherent to the JSON-blob-per-row design**, not a memory tuning problem — more buffer pool can't fix work the CPU has to do regardless of how much of the data is cached.
 
-Then regenerate this section comparing `EAV` vs `EAV_BP1G`, etc. at 50k/100k, and state per-cell whether each of these 50k→100k jumps shrinks under more memory (buffer-pool artifact) or persists (inherent to the algorithm): `EAV aggregate_group` (2431ms→22746ms), `EAV page_first` (660ms→7599ms), `EAV remove_field_hard` (2360ms→14568ms), `JSON_IDX export_full` (3278ms→12559ms).
+**Secondary finding (bulk_load_total, not one of the 4 flagged cells but informative)**: EAV's bulk load time also drops meaningfully under bp1g (100k: 125s→109s, a ~13% improvement) — consistent with EAV's write-heavy workload also benefiting from more cache, though far less dramatically than the read-heavy `aggregate_group`/`page_first` cells above, since bulk loading is itself bottlenecked more by JDBC batch round-trips than by buffer-pool-cacheable re-reads.
+
+**Bottom line for the paper**: buffer pool size matters a lot for EAV's read-heavy, memory-hungry operations at scale — but it is not a universal excuse for every slow number in this report. JSON_IDX's `export_full` cost is real and would persist in any production deployment with a reasonably-sized buffer pool, not just this benchmark's deliberately small 128M default.
 
 ## High-variance reruns (item 2) — done
 
