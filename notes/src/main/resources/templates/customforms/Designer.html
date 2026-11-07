@@ -14,7 +14,8 @@
         h2 { color: #1a202c; font-size: 24px; margin-bottom: 20px; }
         label { display: block; font-size: 13px; color: #4a5568; font-weight: 600; margin-bottom: 6px; margin-top: 14px; }
         input[type=text], input[type=number], input[type=date], select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
-        .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px solid #f0f4f8; }
+        .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px solid #f0f4f8; }
+        .remove-field-btn { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 8px; padding: 10px 14px; font-weight: 600; font-size: 13px; cursor: pointer; }
         .field-row label { margin-top: 0; }
         .field-hint { grid-column: 1 / -1; font-size: 11px; color: #a0aec0; margin-top: -4px; }
         .required-check { display: flex; align-items: center; gap: 6px; font-size: 13px; }
@@ -105,6 +106,7 @@
                 <input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'; renderPreview()">
                 <span>Required</span>
             </div>
+            <button type="button" class="remove-field-btn" onclick="this.closest('.field-row').remove(); renderPreview()">Remove</button>
         `;
         container.appendChild(row);
         rowCount++;
