@@ -78,12 +78,12 @@ class BulkLoader {
         jdbc.batchUpdate("INSERT INTO form_value (submission_id, field_id, value_text, value_num, value_date, value_bool) VALUES (?, ?, ?, ?, ?, ?)", args);
     }
 
-    void batchInsertJson(List<Long> submissionIds, List<Map<String, Object>> rows) {
+    void batchInsertJson(List<Long> submissionIds, List<Long> ownerIds, List<Map<String, Object>> rows) {
         List<Object[]> args = new ArrayList<>(submissionIds.size());
         for (int i = 0; i < submissionIds.size(); i++) {
-            args.add(new Object[]{submissionIds.get(i), toJson(rows.get(i))});
+            args.add(new Object[]{submissionIds.get(i), toJson(rows.get(i)), ownerIds.get(i)});
         }
-        jdbc.batchUpdate("INSERT INTO form_submission_json (submission_id, data) VALUES (?, CAST(? AS JSON))", args);
+        jdbc.batchUpdate("INSERT INTO form_submission_json (submission_id, data, created_by) VALUES (?, CAST(? AS JSON), ?)", args);
     }
 
     void batchInsertRelational(long formId, List<Long> submissionIds, List<Long> ownerIds, List<FormField> fields, List<Map<String, Object>> rows) {

@@ -60,7 +60,9 @@ public class JsonSubmissionStore implements SubmissionStore {
     @Transactional
     public void save(FormDefinition form, List<FormField> fields, Long submissionId, Map<String, Object> values) {
         String json = toJson(values);
-        jdbc.update("INSERT INTO form_submission_json (submission_id, data) VALUES (?, CAST(? AS JSON))", submissionId, json);
+        Long createdBy = jdbc.queryForObject("SELECT created_by FROM form_submission WHERE id = ?", Long.class, submissionId);
+        jdbc.update("INSERT INTO form_submission_json (submission_id, data, created_by) VALUES (?, CAST(? AS JSON), ?)",
+                submissionId, json, createdBy);
     }
 
     @Override
@@ -100,7 +102,7 @@ public class JsonSubmissionStore implements SubmissionStore {
             appendFilterPredicate(sql, field, filter, params);
         }
         if (spec.getOwnerId() != null) {
-            sql.append(" AND fs.created_by = ? ");
+            sql.append(" AND j.created_by = ? ");
             params.add(spec.getOwnerId());
         }
 
@@ -135,7 +137,7 @@ public class JsonSubmissionStore implements SubmissionStore {
             appendFilterPredicate(sql, field, filter, params);
         }
         if (spec.getOwnerId() != null) {
-            sql.append(" AND fs.created_by = ? ");
+            sql.append(" AND j.created_by = ? ");
             params.add(spec.getOwnerId());
         }
         Long result = jdbc.queryForObject(sql.toString(), params.toArray(), Long.class);

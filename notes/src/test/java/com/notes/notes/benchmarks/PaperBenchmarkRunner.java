@@ -364,7 +364,7 @@ class PaperBenchmarkRunner {
             List<Long> ids = headerBatch.submissionIds();
             switch (variant.storageType()) {
                 case EAV -> bulkLoader.batchInsertEav(ids, fields, rows);
-                case JSON -> bulkLoader.batchInsertJson(ids, rows);
+                case JSON -> bulkLoader.batchInsertJson(ids, headerBatch.ownerIds(), rows);
                 case RELATIONAL -> bulkLoader.batchInsertRelational(form.getId(), ids, headerBatch.ownerIds(), fields, rows);
             }
             long chunkElapsed = System.nanoTime() - chunkStart;
@@ -893,12 +893,14 @@ class PaperBenchmarkRunner {
      * persist across cells since they're DDL on this shared table. Without this,
      * indexes accumulate cell over cell until MySQL's 64-key-per-table limit is
      * hit (a real failure caught during this run's own smoke test). DROP+CREATE
-     * matches V4__forms.sql's definition exactly, for full isolation.
+     * matches V4__forms.sql + V7__form_submission_json_created_by.sql exactly,
+     * for full isolation.
      */
     private void resetJsonTable() {
         jdbc.execute("DROP TABLE IF EXISTS form_submission_json");
         jdbc.execute("CREATE TABLE form_submission_json (" +
-                "submission_id BIGINT NOT NULL, data JSON NOT NULL, PRIMARY KEY (submission_id), " +
+                "submission_id BIGINT NOT NULL, data JSON NOT NULL, created_by BIGINT NULL, PRIMARY KEY (submission_id), " +
+                "KEY idx_form_submission_json_created_by (created_by), " +
                 "CONSTRAINT fk_form_submission_json_submission FOREIGN KEY (submission_id) REFERENCES form_submission (id)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
     }
