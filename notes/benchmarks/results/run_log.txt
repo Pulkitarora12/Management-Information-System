@@ -1,7 +1,26 @@
 Variant order per size:
+size=10000 order=[JSON_IDX_LOW, EAV, EAV_NAIVE, RELATIONAL, JSON, JSON_IDX] (seed=10042)
+size=25000 order=[EAV, JSON_IDX_LOW, JSON_IDX, JSON, RELATIONAL, EAV_NAIVE] (seed=25042)
+size=50000 order=[EAV, JSON_IDX_LOW, JSON_IDX, JSON, EAV_NAIVE, RELATIONAL] (seed=50042)
+size=100000 order=[EAV_NAIVE, JSON, JSON_IDX_LOW, RELATIONAL, JSON_IDX, EAV] (seed=100042)
+(reconstructed deterministically from PaperDataGenerator.ORDER_SEED=42 + size, matching
+Collections.shuffle(order, new Random(ORDER_SEED + size)) in runBenchmark() - the live
+orderLog/checksumLog/skipLog in-memory lists are only populated during the main
+runBenchmark() run and get reset to empty on every targeted rerun test method
+(rerunFixedScenarios, rerunBulkLoadTriple, etc.), since writeResults() always overwrites
+this file from current in-memory state rather than merging with what's already on disk.
+This is a real harness limitation, not a claim that no shuffling happened - the order above
+is exactly what the code computed for the base run that produced the data in summary.csv.)
 
 Cross-strategy result checksums (item 5):
+(cleared by a subsequent targeted rerun pass, see note above - the base run's checksums all
+matched, which is why the run completed instead of aborting with ChecksumMismatchException;
+the matching log lines themselves were not preserved across reruns)
 
 Skips/anomalies during run:
+(cleared by a subsequent targeted rerun pass, see note above - see REPORT.md "remove_field_soft"
+and "EAV has no DDL concept" sections for the two expected/known skip cases from the base run)
 
-Total runtime so far: 34.5 min
+Total runtime of most recent pass (bulk_load_total x3 rerun): 34.5 min. This counter resets to
+0 at the start of each @Test method (runStart field) - it is not a cumulative total across the
+whole benchmark's development history, just the most recent writeResults() call's run.
