@@ -1,0 +1,9 @@
+-- JSON_BP1G @ 100000 : filter_eq_low
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 285 AND j.data->>'$.shift' = 'A'
+
+-> Nested loop inner join  (cost=44510 rows=30455) (actual time=0.052..523 rows=33284 loops=1)
+    -> Filter: (json_unquote(json_extract(j.`data`,'$.shift')) = 'A')  (cost=10296 rows=97753) (actual time=0.0396..372 rows=33284 loops=1)
+        -> Table scan on j  (cost=10296 rows=97753) (actual time=0.0197..226 rows=100006 loops=1)
+    -> Filter: (fs.form_id = 285)  (cost=0.25 rows=0.312) (actual time=0.00389..0.00407 rows=1 loops=33284)
+        -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00325..0.0033 rows=1 loops=33284)
+

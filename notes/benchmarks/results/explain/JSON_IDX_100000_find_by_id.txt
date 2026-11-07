@@ -1,0 +1,5 @@
+-- JSON_IDX @ 100000 : find_by_id
+-- SQL: SELECT data FROM form_submission_json WHERE submission_id = 4577992
+
+-> Rows fetched before execution  (cost=0..0 rows=1) (actual time=300e-6..500e-6 rows=1 loops=1)
+

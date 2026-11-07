@@ -1,0 +1,8 @@
+-- JSON_IDX_LOW_BP1G @ 100000 : filter_eq_low
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 286 AND j.data->>'$.shift' = 'A'
+
+-> Nested loop inner join  (cost=23743 rows=17164) (actual time=0.0777..417 rows=33284 loops=1)
+    -> Index lookup on j using idx_gc_4618 (gc_4618='A')  (cost=6492 rows=49288) (actual time=0.0592..253 rows=33284 loops=1)
+    -> Filter: (fs.form_id = 286)  (cost=0.25 rows=0.348) (actual time=0.00418..0.00435 rows=1 loops=33284)
+        -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00349..0.00354 rows=1 loops=33284)
+

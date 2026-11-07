@@ -1,0 +1,61 @@
+Variant order per size:
+[bp1g] size=50000 order=[RELATIONAL, EAV_NAIVE, EAV, JSON_IDX_LOW, JSON_IDX, JSON] (seed=50043)
+[bp1g] size=100000 order=[JSON, JSON_IDX_LOW, EAV, EAV_NAIVE, RELATIONAL, JSON_IDX] (seed=100043)
+
+Cross-strategy result checksums (item 5):
+50000|filter_eq_high: reference set by RELATIONAL_BP1G (n=24)
+50000|filter_eq_low: reference set by RELATIONAL_BP1G (n=16593)
+50000|filter_range_eq: reference set by RELATIONAL_BP1G (n=85)
+50000|filter_3_fields: reference set by RELATIONAL_BP1G (n=464)
+50000|filter_eq_high: EAV_NAIVE_BP1G matches reference (n=24)
+50000|filter_eq_low: EAV_NAIVE_BP1G matches reference (n=16593)
+50000|filter_range_eq: EAV_NAIVE_BP1G matches reference (n=85)
+50000|filter_3_fields: EAV_NAIVE_BP1G matches reference (n=464)
+50000|filter_eq_high: EAV_BP1G matches reference (n=24)
+50000|filter_eq_low: EAV_BP1G matches reference (n=16593)
+50000|filter_range_eq: EAV_BP1G matches reference (n=85)
+50000|filter_3_fields: EAV_BP1G matches reference (n=464)
+50000|filter_eq_high: JSON_IDX_LOW_BP1G matches reference (n=24)
+50000|filter_eq_low: JSON_IDX_LOW_BP1G matches reference (n=16593)
+50000|filter_range_eq: JSON_IDX_LOW_BP1G matches reference (n=85)
+50000|filter_3_fields: JSON_IDX_LOW_BP1G matches reference (n=464)
+50000|filter_eq_high: JSON_IDX_BP1G matches reference (n=24)
+50000|filter_eq_low: JSON_IDX_BP1G matches reference (n=16593)
+50000|filter_range_eq: JSON_IDX_BP1G matches reference (n=85)
+50000|filter_3_fields: JSON_IDX_BP1G matches reference (n=464)
+50000|filter_eq_high: JSON_BP1G matches reference (n=24)
+50000|filter_eq_low: JSON_BP1G matches reference (n=16593)
+50000|filter_range_eq: JSON_BP1G matches reference (n=85)
+50000|filter_3_fields: JSON_BP1G matches reference (n=464)
+100000|filter_eq_high: reference set by JSON_BP1G (n=47)
+100000|filter_eq_low: reference set by JSON_BP1G (n=33282)
+100000|filter_range_eq: reference set by JSON_BP1G (n=161)
+100000|filter_3_fields: reference set by JSON_BP1G (n=927)
+100000|filter_eq_high: JSON_IDX_LOW_BP1G matches reference (n=47)
+100000|filter_eq_low: JSON_IDX_LOW_BP1G matches reference (n=33282)
+100000|filter_range_eq: JSON_IDX_LOW_BP1G matches reference (n=161)
+100000|filter_3_fields: JSON_IDX_LOW_BP1G matches reference (n=927)
+100000|filter_eq_high: EAV_BP1G matches reference (n=47)
+100000|filter_eq_low: EAV_BP1G matches reference (n=33282)
+100000|filter_range_eq: EAV_BP1G matches reference (n=161)
+100000|filter_3_fields: EAV_BP1G matches reference (n=927)
+100000|filter_eq_high: EAV_NAIVE_BP1G matches reference (n=47)
+100000|filter_eq_low: EAV_NAIVE_BP1G matches reference (n=33282)
+100000|filter_range_eq: EAV_NAIVE_BP1G matches reference (n=161)
+100000|filter_3_fields: EAV_NAIVE_BP1G matches reference (n=927)
+100000|filter_eq_high: RELATIONAL_BP1G matches reference (n=47)
+100000|filter_eq_low: RELATIONAL_BP1G matches reference (n=33282)
+100000|filter_range_eq: RELATIONAL_BP1G matches reference (n=161)
+100000|filter_3_fields: RELATIONAL_BP1G matches reference (n=927)
+100000|filter_eq_high: JSON_IDX_BP1G matches reference (n=47)
+100000|filter_eq_low: JSON_IDX_BP1G matches reference (n=33282)
+100000|filter_range_eq: JSON_IDX_BP1G matches reference (n=161)
+100000|filter_3_fields: JSON_IDX_BP1G matches reference (n=927)
+
+Skips/anomalies during run:
+EAV_NAIVE_BP1G@50000 add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag
+EAV_BP1G@50000 add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag
+EAV_BP1G@100000 add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag
+EAV_NAIVE_BP1G@100000 add_field_indexed: n/a for EAV - no DDL for new fields regardless of indexed flag
+
+Total runtime so far: 43.8 min

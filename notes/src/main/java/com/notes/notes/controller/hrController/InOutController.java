@@ -5,6 +5,7 @@ import com.notes.notes.entity.hrEntities.InOutEntry;
 import com.notes.notes.service.hrServices.EmployeeService;
 import com.notes.notes.service.hrServices.InOutService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,7 @@ public class InOutController {
     @Autowired
     private EmployeeService employeeService;
 
+    @PreAuthorize("@authz.can('HR_INOUT','VIEW')")
     @GetMapping
     public String showInOutLogs(Model model) {
         List<InOutEntry> activeEntries = inOutService.getActiveEntries();
@@ -38,6 +40,7 @@ public class InOutController {
         return "hr/in-out-logs";
     }
 
+    @PreAuthorize("@authz.can('HR_INOUT','CREATE')")
     @PostMapping("/out")
     public String logEmployeeOut(
             @RequestParam("employeeId") Long employeeId,
@@ -57,6 +60,7 @@ public class InOutController {
         return "redirect:/hr/in-out";
     }
 
+    @PreAuthorize("@authz.can('HR_INOUT','EDIT')")
     @PostMapping("/{id}/in")
     public String logEmployeeIn(
             @PathVariable("id") Long entryId,
@@ -75,6 +79,7 @@ public class InOutController {
         return "redirect:/hr/in-out";
     }
 
+    @PreAuthorize("@authz.can('HR_INOUT','DELETE')")
     @PostMapping("/{id}/delete")
     public String deleteLog(
             @PathVariable("id") Long id,
@@ -88,6 +93,7 @@ public class InOutController {
         return "redirect:/hr/in-out";
     }
 
+    @PreAuthorize("@authz.can('HR_INOUT','VIEW')")
     @GetMapping("/monthly-summary")
     public String showMonthlySummary(
             @RequestParam(value = "month", required = false) Integer month,

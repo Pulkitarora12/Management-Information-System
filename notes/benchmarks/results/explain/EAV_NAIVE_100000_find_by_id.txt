@@ -1,0 +1,5 @@
+-- EAV_NAIVE @ 100000 : find_by_id
+-- SQL: SELECT field_id, value_text, value_num, value_date, value_bool FROM form_value WHERE submission_id = 1608928
+
+-> Index lookup on form_value using uk_form_value_submission_field (submission_id=1608928)  (cost=4.41 rows=12) (actual time=0.0484..0.0988 rows=12 loops=1)
+

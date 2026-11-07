@@ -34,6 +34,7 @@ public class ProductionEntryController {
     @Autowired
     private MasterService masterService;
 
+    @PreAuthorize("@authz.can('PRODUCTION','CREATE')")
     @GetMapping
     public String showProductionEntryForm(@AuthenticationPrincipal UserDetails userDetails,
                                           Model model) {
@@ -64,6 +65,7 @@ public class ProductionEntryController {
     }
 
 
+    @PreAuthorize("@authz.can('PRODUCTION','CREATE')")
     @PostMapping
     public String saveProduction(@ModelAttribute ProductionEntryRequestDTO dto,
                                  RedirectAttributes redirectAttributes) {
@@ -84,6 +86,7 @@ public class ProductionEntryController {
         return "redirect:/production-entry";
     }
 
+    @PreAuthorize("@authz.can('PRODUCTION','VIEW')")
     @GetMapping("/getAll")
     public String getProductionHistory(
             @RequestParam(required = false) Integer month,
@@ -116,6 +119,7 @@ public class ProductionEntryController {
     }
 
 
+    @PreAuthorize("@authz.can('PRODUCTION','EXPORT')")
     @GetMapping("/export")
     public ResponseEntity<String> exportProductionCSV() {
         List<ProductionEntry> entries = service.getAllEntries();
@@ -168,6 +172,7 @@ public class ProductionEntryController {
     }
 
 
+    @PreAuthorize("@authz.can('PRODUCTION','VIEW')")
     @GetMapping("/{id}/timeslot")
     public String viewTimeSlot(@PathVariable Long id, Model model) {
         TimeSlot timeSlot = service.getTimeSlotByEntry(id);
@@ -176,6 +181,7 @@ public class ProductionEntryController {
         return "user/timeslots";
     }
 
+    @PreAuthorize("@authz.can('PRODUCTION','VIEW')")
     @GetMapping("/{id}/downtime")
     public String viewDowntime(@PathVariable Long id, Model model) {
         List<DowntimeEntry> downtimes = service.getDowntimeByEntry(id);

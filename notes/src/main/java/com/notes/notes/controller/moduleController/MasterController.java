@@ -36,6 +36,7 @@ public class MasterController {
     @Autowired
     private MasterRepository masterRepository;
 
+    @PreAuthorize("@authz.can('MASTERS','CREATE')")
     @GetMapping("/new")
     public String showCreateMasterForm(Model model) {
         MasterCreateDTO dto = new MasterCreateDTO();
@@ -46,6 +47,7 @@ public class MasterController {
         return "user/master-create-form";
     }
 
+    @PreAuthorize("@authz.can('MASTERS','CREATE')")
     @PostMapping("/create")
     public String createMaster(@ModelAttribute("master") MasterCreateDTO masterDTO) {
         Master savedMaster = masterService.createMaster(masterDTO);
@@ -77,11 +79,13 @@ public class MasterController {
         return "redirect:/masters";
     }
 
+    @PreAuthorize("@authz.can('MASTERS','CREATE')")
     @GetMapping("/upload")
     public String showUploadPage() {
         return "user/upload-master";
     }
 
+    @PreAuthorize("@authz.can('MASTERS','CREATE')")
     @PostMapping("/upload")
     public String uploadMasterFile(
             @RequestParam("file") MultipartFile file,
