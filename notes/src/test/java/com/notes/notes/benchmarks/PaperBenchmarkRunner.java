@@ -1255,6 +1255,123 @@ class PaperBenchmarkRunner {
         }
     }
 
+    // ===================================================== phase 2: bp1g + n=3 bulk load ====
+
+    /**
+     * Phase-2 item 1: re-measures Scenario A+B at 50k/100k under a 1G buffer pool, tagged
+     * with a "_BP1G" label suffix so these rows land as their own strategy key in
+     * summary.csv/raw_paper.csv instead of colliding with the default-buffer-pool rows for
+     * the same variant/size. Caller is responsible for actually changing
+     * innodb_buffer_pool_size and restarting MySQL BEFORE invoking this, and restoring it
+     * afterward - this method only runs the benchmark cells and relies on whatever buffer
+     * pool is live when it runs.
+     *
+     *   mvn test -Dtest=PaperBenchmarkRunner#runBufferPoolSensitivity -DfailIfNoTests=false
+     */
+    @Test
+    void runBufferPoolSensitivity() throws IOException {
+        runStart = System.nanoTime();
+        bulkLoader = new BulkLoader(jdbc);
+        long[] ownerUserIds = benchUsers();
+        loadExistingCsvRows();
+        loadExistingIntegrityRows();
+
+        int[] bpSizes = {50_000, 100_000};
+        for (int size : bpSizes) {
+            List<Variant> order = new ArrayList<>(variants());
+            Collections.shuffle(order, new Random(PaperDataGenerator.ORDER_SEED + size + 1));
+            orderLog.add("[bp1g] size=" + size + " order=" + order.stream().map(Variant::label).toList()
+                    + " (seed=" + (PaperDataGenerator.ORDER_SEED + size + 1) + ")");
+            for (Variant base : order) {
+                Variant tagged = new Variant(base.label() + "_BP1G", base.storageType(), base.indexedKeys(), base.storeOverride());
+                System.out.println("=== [bp1g] " + tagged.label() + " @ " + size + " (elapsed so far: " + minutesSoFar() + " min) ===");
+                removeRows(r -> r[0].equals(tagged.label()) && r[1].equals(String.valueOf(size)));
+                try {
+                    runCell(tagged, size, ownerUserIds);
+                } catch (Exception e) {
+                    skipLog.add(tagged.label() + "@" + size + " [bp1g] FAILED: " + e);
+                    e.printStackTrace();
+                }
+                writeResults();
+            }
+        }
+        System.out.println("TOTAL BP1G RUNTIME: " + minutesSoFar() + " min");
+    }
+
+    /**
+     * Phase-2 item 3: bulk_load_total measured 3x per variant/size (full load + full
+     * teardown between each of the 3 runs, since it's a single-shot whole-dataset
+     * operation that can't be measured 3x in place without re-loading) instead of once.
+     * Replaces the existing single-run bulk_load_total rows for every variant x size with
+     * the new 3-sample set so summary.csv reports mean±std/p95 for this metric like every
+     * other. insert_batch_1000 rows from these extra loads are intentionally discarded
+     * (not needed 3x, already well-sampled from the original run) to avoid skewing that
+     * metric's n.
+     *
+     *   mvn test -Dtest=PaperBenchmarkRunner#rerunBulkLoadTriple -DfailIfNoTests=false
+     */
+    @Test
+    void rerunBulkLoadTriple() throws IOException {
+        runStart = System.nanoTime();
+        bulkLoader = new BulkLoader(jdbc);
+        long[] ownerUserIds = benchUsers();
+        loadExistingCsvRows();
+        loadExistingIntegrityRows();
+
+        removeRows(r -> r[3].equals("bulk_load_total"));
+
+        for (int size : SIZES) {
+            for (Variant variant : variants()) {
+                System.out.println("=== [bulk_load x3] " + variant.label() + " @ " + size + " (elapsed so far: " + minutesSoFar() + " min) ===");
+                for (int run = 1; run <= 3; run++) {
+                    switch (variant.storageType()) {
+                        case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
+                        case JSON -> resetJsonTable();
+                        case RELATIONAL -> { }
+                    }
+                    List<FormField> fields = buildFields(variant.indexedKeys());
+                    FormDefinition form = formDefinitionService.createForm(
+                            "bl3_" + variant.label().toLowerCase() + "_" + size + "_" + System.nanoTime(),
+                            "Bulk Load x3 " + variant.label() + " " + size, "PaperBenchmarkRunner",
+                            variant.storageType(), fields);
+                    List<FormField> allFields = form.getFields();
+                    SubmissionStore store = variant.storeOverride() != null ? variant.storeOverride() : storeFor(variant.storageType());
+                    Random dataRandom = new Random(PaperDataGenerator.DATA_SEED);
+                    Random ownerRandom = new Random(PaperDataGenerator.DATA_SEED + 1);
+
+                    long totalStart = System.nanoTime();
+                    List<Long> ids = bulkLoadNoCsv(variant, size, form, allFields, store, dataRandom, ownerRandom, ownerUserIds);
+                    long totalElapsed = System.nanoTime() - totalStart;
+                    csvRows.add(csvRow(variant.label(), size, "A", "bulk_load_total", run, ms(totalElapsed), "ms", size));
+
+                    teardownCell(variant, form);
+                }
+                writeResults();
+            }
+        }
+        System.out.println("TOTAL BULK_LOAD x3 RUNTIME: " + minutesSoFar() + " min");
+    }
+
+    /** Same as bulkLoad() but discards the per-chunk insert_batch_1000 rows - used by rerunBulkLoadTriple so 3x reloads don't skew that metric's sample count. */
+    private List<Long> bulkLoadNoCsv(Variant variant, int size, FormDefinition form, List<FormField> fields,
+                                      SubmissionStore store, Random dataRandom, Random ownerRandom, long[] ownerUserIds) {
+        List<Long> allIds = new ArrayList<>(size);
+        for (int inserted = 0; inserted < size; inserted += CHUNK) {
+            int thisChunk = Math.min(CHUNK, size - inserted);
+            List<Map<String, Object>> rows = new ArrayList<>(thisChunk);
+            for (int i = 0; i < thisChunk; i++) rows.add(generator.row(dataRandom));
+            BulkLoader.HeaderBatch headerBatch = bulkLoader.batchInsertHeaders(form.getId(), form.getVersion(), thisChunk, ownerUserIds, ownerRandom);
+            List<Long> ids = headerBatch.submissionIds();
+            switch (variant.storageType()) {
+                case EAV -> bulkLoader.batchInsertEav(ids, fields, rows);
+                case JSON -> bulkLoader.batchInsertJson(ids, headerBatch.ownerIds(), rows);
+                case RELATIONAL -> bulkLoader.batchInsertRelational(form.getId(), ids, headerBatch.ownerIds(), fields, rows);
+            }
+            allIds.addAll(ids);
+        }
+        return allIds;
+    }
+
     private void rerunSingleOpWithMoreRuns(Variant variant, int size, String op, long[] ownerUserIds) {
         switch (variant.storageType()) {
             case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
