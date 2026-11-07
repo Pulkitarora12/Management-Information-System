@@ -105,8 +105,10 @@ public class JsonSubmissionStore implements SubmissionStore {
         }
 
         if (spec.getSortFieldKey() != null && byKey.containsKey(spec.getSortFieldKey())) {
+            FormField sortField = byKey.get(spec.getSortFieldKey());
             requireSafeKey(spec.getSortFieldKey());
-            sql.append(" ORDER BY j.data->>'$.").append(spec.getSortFieldKey()).append("' ")
+            String sortExpr = isIndexed(sortField) ? "j." + generatedColumnName(sortField) : "j.data->>'$." + spec.getSortFieldKey() + "'";
+            sql.append(" ORDER BY ").append(sortExpr).append(" ")
                     .append(spec.isSortDescending() ? "DESC" : "ASC");
         } else {
             sql.append(" ORDER BY fs.id ").append(spec.isSortDescending() ? "DESC" : "ASC");
@@ -151,7 +153,11 @@ public class JsonSubmissionStore implements SubmissionStore {
         StringBuilder sql = new StringBuilder("SELECT ");
         if (spec.groupByFieldKey() != null) {
             requireSafeKey(spec.groupByFieldKey());
-            sql.append("j.data->>'$.").append(spec.groupByFieldKey()).append("' AS grp_val, ");
+            FormField groupField = byKey.get(spec.groupByFieldKey());
+            String groupExpr = groupField != null && isIndexed(groupField)
+                    ? "j." + generatedColumnName(groupField)
+                    : "j.data->>'$." + spec.groupByFieldKey() + "'";
+            sql.append(groupExpr).append(" AS grp_val, ");
         }
         sql.append(aggExpr).append(" AS agg_val FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = ?");
         List<Object> params = new ArrayList<>(List.of(form.getId()));
@@ -173,6 +179,15 @@ public class JsonSubmissionStore implements SubmissionStore {
         return bytes == null ? 0 : bytes;
     }
 
+    /**
+     * EQ/RANGE reference the generated column by name (not the JSON path expression)
+     * whenever one exists for this field, so the optimizer can actually pick up its
+     * secondary index - MySQL only matches a functional index to a query when the
+     * WHERE expression is textually identical to the generated column's definition,
+     * and "j.data->>'$.key'" is not identical to "CAST(data->>'$.key' AS ...)" even
+     * though they're semantically the same. LIKE keeps using the raw JSON path since
+     * a leading-wildcard LIKE can't use a BTREE index either way.
+     */
     private void appendFilterPredicate(StringBuilder sql, FormField field, FilterCondition filter, List<Object> params) {
         requireSafeKey(field.getFieldKey());
         String path = "j.data->>'$." + field.getFieldKey() + "'";
@@ -180,7 +195,7 @@ public class JsonSubmissionStore implements SubmissionStore {
             case NUMBER, DECIMAL, CALCULATED -> true;
             default -> false;
         };
-        String expr = numeric ? "CAST(" + path + " AS DECIMAL(20,6))" : path;
+        String expr = isIndexed(field) ? "j." + generatedColumnName(field) : (numeric ? "CAST(" + path + " AS DECIMAL(20,6))" : path);
 
         switch (filter.op()) {
             case EQ -> {

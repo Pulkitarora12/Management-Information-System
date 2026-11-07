@@ -303,6 +303,10 @@ class PaperBenchmarkRunner {
     // ------------------------------------------------------------------ cell ----
 
     private void runCell(Variant variant, int size, long[] ownerUserIds) {
+        runCell(variant, size, ownerUserIds, true);
+    }
+
+    private void runCell(Variant variant, int size, long[] ownerUserIds, boolean includeSchemaEvolution) {
         // Isolation (section 1.2): form_value/form_submission_json are shared across every
         // form - a leftover row from an earlier run (or a prior cell in THIS run) would
         // corrupt both the storage_size measurement (whole-table, not per-form) and this
@@ -336,7 +340,9 @@ class PaperBenchmarkRunner {
         if (size == 100_000) {
             captureExplain(variant, size, form, allFields, ownerUserIds);
         }
-        runSchemaEvolution(variant, size, form, allFields, store, size);
+        if (includeSchemaEvolution) {
+            runSchemaEvolution(variant, size, form, allFields, store, size);
+        }
 
         teardownCell(variant, form);
     }
@@ -634,29 +640,7 @@ class PaperBenchmarkRunner {
         }
         verifyReadable(variant, size, "add_field_indexed", form, fields, store, before);
 
-        schemaEvolutionPhase(variant, size, "remove_field_soft", () -> {
-            for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
-                FormField field = newField("sb_soft_" + i, FieldType.TEXT, fields.size() + 300 + i, form);
-                FormField saved = formFieldRepository.save(field);
-                store.onFieldAdded(form, saved);
-                backfillField(variant, form, saved);
-                long t = System.nanoTime();
-                try {
-                    formFieldRepository.delete(saved); // soft: metadata only, data left orphaned in storage
-                    csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, ms(System.nanoTime() - t), "ms", 0));
-                } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                    // EAV genuine finding: form_value.field_id has an FK to form_field.id, so a
-                    // field can never be metadata-only-removed while its value rows still exist -
-                    // "soft" removal is structurally impossible here, not a bug to work around.
-                    csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, "0", "ms", 0));
-                    if (i == 1) {
-                        skipLog.add(variant.label() + "@" + size + " remove_field_soft: n/a - form_value's FK to form_field prevents metadata-only removal while value rows exist (genuine EAV finding, not an error)");
-                    }
-                    // the field row + its orphaned-attempt data stay in place; next loop iteration's
-                    // fresh field is unaffected since it uses its own new field_id.
-                }
-            }
-        });
+        schemaEvolutionPhase(variant, size, "remove_field_soft", () -> removeFieldSoftPhase(variant, size, form, fields, store));
         verifyReadable(variant, size, "remove_field_soft", form, fields, store, before);
 
         schemaEvolutionPhase(variant, size, "remove_field_hard", () -> {
@@ -684,6 +668,26 @@ class PaperBenchmarkRunner {
                 csvRows.add(csvRow(variant.label(), size, "B", "rename_label", i, ms(System.nanoTime() - t), "ms", 0));
             }
         });
+    }
+
+    /**
+     * Soft remove is a metadata-only flag for every strategy - the field row (and
+     * its data, if any) stays in place, just marked retired. No FK to worry about
+     * since this is an UPDATE, not a DELETE of form_field. Extracted so the
+     * standalone fix-rerun can re-measure this one phase without re-running
+     * everything else in Scenario B.
+     */
+    private void removeFieldSoftPhase(Variant variant, int size, FormDefinition form, List<FormField> fields, SubmissionStore store) {
+        for (int i = 1; i <= SCENARIO_B_RUNS; i++) {
+            FormField field = newField("sb_soft_" + i, FieldType.TEXT, fields.size() + 300 + i, form);
+            FormField saved = formFieldRepository.save(field);
+            store.onFieldAdded(form, saved);
+            backfillField(variant, form, saved);
+            long t = System.nanoTime();
+            saved.setActive(false);
+            formFieldRepository.save(saved);
+            csvRows.add(csvRow(variant.label(), size, "B", "remove_field_soft", i, ms(System.nanoTime() - t), "ms", 0));
+        }
     }
 
     /** A failure in one Scenario B phase must never take down the rest - each is independent. */
@@ -1067,5 +1071,258 @@ class PaperBenchmarkRunner {
 
     private String fmt(double v) {
         return String.format(Locale.ROOT, "%.3f", v);
+    }
+
+    // ===================================================== targeted fix rerun ====
+
+    /**
+     * Re-measures only what the post-interim fairness fixes actually affect,
+     * instead of re-running the whole 10k-100k x 6-variant matrix from scratch:
+     *   1. remove_field_soft, now a metadata flag flip for every strategy (was
+     *      FK-blocked for EAV) - rerun for all 6 variants x all 4 sizes.
+     *   2. JSON_IDX's Scenario A reads, now that filter/sort/group-by reference the
+     *      generated column by name instead of a JSON path expression that didn't
+     *      reliably hit the functional index - rerun JSON_IDX's full Scenario A at
+     *      all 4 sizes.
+     *   3. Any already-measured read op whose std_ms exceeded 30% of its mean_ms -
+     *      rerun with 20 samples instead of the original 10/5.
+     * Loads the existing raw_paper.csv/integrity.csv into memory first, strips the
+     * rows the fixes invalidate, appends freshly measured ones, and writes the
+     * result back through the normal writeResults() path so summary.csv/
+     * storage_size_summary.csv stay consistent with raw_paper.csv.
+     *
+     *   mvn test -Dtest=PaperBenchmarkRunner#rerunFixedScenarios -DfailIfNoTests=false
+     */
+    @Test
+    void rerunFixedScenarios() throws IOException {
+        runStart = System.nanoTime();
+        bulkLoader = new BulkLoader(jdbc);
+        long[] ownerUserIds = benchUsers();
+        loadExistingCsvRows();
+        loadExistingIntegrityRows();
+
+        for (int size : SIZES) {
+            for (Variant variant : variants()) {
+                System.out.println("=== [rerun] remove_field_soft: " + variant.label() + " @ " + size + " ===");
+                removeRows(r -> r[0].equals(variant.label()) && r[1].equals(String.valueOf(size))
+                        && r[2].equals("B") && r[3].equals("remove_field_soft"));
+                rerunRemoveFieldSoftOnly(variant, size, ownerUserIds);
+                writeResults();
+            }
+        }
+
+        Variant jsonIdx = variants().stream().filter(v -> v.label().equals("JSON_IDX")).findFirst().orElseThrow();
+        for (int size : SIZES) {
+            System.out.println("=== [rerun] JSON_IDX Scenario A @ " + size + " ===");
+            removeRows(r -> r[0].equals("JSON_IDX") && r[1].equals(String.valueOf(size)) && r[2].equals("A"));
+            runCell(jsonIdx, size, ownerUserIds, false);
+            writeResults();
+        }
+
+        rerunHighVarianceCells(ownerUserIds);
+        writeResults();
+        System.out.println("TOTAL RERUN TIME: " + minutesSoFar() + " min");
+    }
+
+    private void loadExistingCsvRows() throws IOException {
+        Path raw = Path.of("benchmarks", "results", "raw_paper.csv");
+        if (!Files.exists(raw)) {
+            csvRows.add(new String[]{"strategy", "dataset_size", "scenario", "operation", "run", "value", "unit", "rows_returned", "timestamp"});
+            return;
+        }
+        for (String line : Files.readAllLines(raw)) {
+            if (!line.isBlank()) csvRows.add(line.split(",", -1));
+        }
+    }
+
+    private void loadExistingIntegrityRows() throws IOException {
+        Path integrity = Path.of("benchmarks", "results", "integrity.csv");
+        if (!Files.exists(integrity)) return;
+        List<String> lines = Files.readAllLines(integrity);
+        for (int i = 1; i < lines.size(); i++) { // skip header
+            if (!lines.get(i).isBlank()) integrityRows.add(lines.get(i).split(",", -1));
+        }
+    }
+
+    /** Drops every data row (never the header at index 0) matching the predicate, so a rerun can replace them. */
+    private void removeRows(java.util.function.Predicate<String[]> matches) {
+        for (int i = csvRows.size() - 1; i >= 1; i--) {
+            if (matches.test(csvRows.get(i))) csvRows.remove(i);
+        }
+    }
+
+    private void rerunRemoveFieldSoftOnly(Variant variant, int size, long[] ownerUserIds) {
+        switch (variant.storageType()) {
+            case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
+            case JSON -> resetJsonTable();
+            case RELATIONAL -> { }
+        }
+        List<FormField> fields = buildFields(variant.indexedKeys());
+        FormDefinition form = formDefinitionService.createForm(
+                "rerun_soft_" + variant.label().toLowerCase() + "_" + size + "_" + System.nanoTime(),
+                "Rerun Soft Remove " + variant.label() + " " + size, "PaperBenchmarkRunner",
+                variant.storageType(), fields);
+        List<FormField> allFields = form.getFields();
+        SubmissionStore store = variant.storeOverride() != null ? variant.storeOverride() : storeFor(variant.storageType());
+
+        Random dataRandom = new Random(PaperDataGenerator.DATA_SEED);
+        Random ownerRandom = new Random(PaperDataGenerator.DATA_SEED + 1);
+        // bulkLoad's own insert_batch_1000/bulk_load_total rows for this throwaway form
+        // would duplicate what's already on record for this variant/size - drop any
+        // existing ones first, they're not what this rerun is measuring.
+        removeRows(r -> r[0].equals(variant.label()) && r[1].equals(String.valueOf(size))
+                && (r[3].equals("insert_batch_1000") || r[3].equals("bulk_load_total")));
+        bulkLoad(variant, size, form, allFields, store, dataRandom, ownerRandom, ownerUserIds);
+        analyzeTables(variant, form);
+
+        removeFieldSoftPhase(variant, size, form, allFields, store);
+
+        teardownCell(variant, form);
+    }
+
+    /**
+     * Item 5: any read op (Scenario A, timed() path only - not Scenario B/schema
+     * ops, and not the once-per-cell "_full" measurements) whose std_ms exceeded
+     * 30% of its mean_ms in the data gathered so far gets re-measured with 20
+     * samples instead of the original 10 (reads) / 5 (writes).
+     */
+    private static final Set<String> RERUN_ELIGIBLE_OPS = Set.of(
+            "find_by_id", "filter_eq_high", "filter_eq_low", "filter_range_eq", "filter_3_fields",
+            "like_search", "aggregate_group", "aggregate_date", "count_all", "count_filtered",
+            "page_first", "page_deep", "own_scope_page", "insert_single", "update_single", "delete_single");
+
+    private void rerunHighVarianceCells(long[] ownerUserIds) {
+        Map<String, List<Double>> grouped = new LinkedHashMap<>();
+        for (String[] r : csvRows.subList(1, csvRows.size())) {
+            if (!r[6].equals("ms") || !RERUN_ELIGIBLE_OPS.contains(r[3])) continue;
+            grouped.computeIfAbsent(String.join("|", r[0], r[1], r[3]), k -> new ArrayList<>()).add(Double.parseDouble(r[5]));
+        }
+        List<String> flagged = new ArrayList<>();
+        for (Map.Entry<String, List<Double>> e : grouped.entrySet()) {
+            PaperStats s = PaperStats.of(e.getValue());
+            if (s.meanMs() > 0 && s.stdDevMs() / s.meanMs() > 0.30) flagged.add(e.getKey());
+        }
+        skipLog.add("High-variance rerun (item 5) flagged " + flagged.size() + " cell(s) for 20-run remeasurement: " + flagged);
+
+        for (String key : flagged) {
+            String[] parts = key.split("\\|");
+            String strategyLabel = parts[0];
+            int size = Integer.parseInt(parts[1]);
+            String op = parts[2];
+            Variant variant = variants().stream().filter(v -> v.label().equals(strategyLabel)).findFirst().orElse(null);
+            if (variant == null) continue;
+            System.out.println("=== [rerun] high-variance " + key + " (20 runs) ===");
+            try {
+                rerunSingleOpWithMoreRuns(variant, size, op, ownerUserIds);
+            } catch (Exception ex) {
+                skipLog.add(key + ": high-variance rerun FAILED: " + ex);
+            }
+        }
+    }
+
+    private void rerunSingleOpWithMoreRuns(Variant variant, int size, String op, long[] ownerUserIds) {
+        switch (variant.storageType()) {
+            case EAV -> jdbc.execute("TRUNCATE TABLE form_value");
+            case JSON -> resetJsonTable();
+            case RELATIONAL -> { }
+        }
+        List<FormField> fields = buildFields(variant.indexedKeys());
+        FormDefinition form = formDefinitionService.createForm(
+                "rerun_var_" + variant.label().toLowerCase() + "_" + size + "_" + System.nanoTime(),
+                "Rerun High-Variance " + variant.label() + " " + size, "PaperBenchmarkRunner",
+                variant.storageType(), fields);
+        List<FormField> allFields = form.getFields();
+        SubmissionStore store = variant.storeOverride() != null ? variant.storeOverride() : storeFor(variant.storageType());
+
+        Random dataRandom = new Random(PaperDataGenerator.DATA_SEED);
+        Random ownerRandom = new Random(PaperDataGenerator.DATA_SEED + 1);
+        removeRows(r -> r[0].equals(variant.label()) && r[1].equals(String.valueOf(size))
+                && (r[3].equals("insert_batch_1000") || r[3].equals("bulk_load_total")));
+        List<Long> submissionIds = bulkLoad(variant, size, form, allFields, store, dataRandom, ownerRandom, ownerUserIds);
+        analyzeTables(variant, form);
+
+        removeRows(r -> r[0].equals(variant.label()) && r[1].equals(String.valueOf(size)) && r[3].equals(op));
+
+        User owner = userRepository.findById(ownerUserIds[0]).orElseThrow();
+        Random pick = new Random(99);
+        Supplier<Integer> action = switch (op) {
+            case "find_by_id" -> () -> {
+                Long id = submissionIds.get(pick.nextInt(submissionIds.size()));
+                return store.findById(form, allFields, id).isEmpty() ? 0 : 1;
+            };
+            case "filter_eq_high" -> () -> store.query(form, allFields,
+                    new QuerySpec().addFilter(FilterCondition.eq("part_no", "PN-10500")).page(0, 100)).size();
+            case "filter_eq_low" -> () -> store.query(form, allFields,
+                    new QuerySpec().addFilter(FilterCondition.eq("shift", "A")).page(0, 100)).size();
+            case "filter_range_eq" -> () -> store.query(form, allFields, new QuerySpec()
+                    .addFilter(FilterCondition.range("prod_date", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 30)))
+                    .addFilter(FilterCondition.eq("machine", "Machine-5")).page(0, 100)).size();
+            case "filter_3_fields" -> () -> store.query(form, allFields, new QuerySpec()
+                    .addFilter(FilterCondition.eq("shift", "B"))
+                    .addFilter(FilterCondition.eq("machine", "Machine-10"))
+                    .addFilter(FilterCondition.range("qty_rejected", 5, null)).page(0, 100)).size();
+            case "like_search" -> () -> store.query(form, allFields,
+                    new QuerySpec().addFilter(FilterCondition.like("remarks", "crack")).page(0, 100)).size();
+            case "aggregate_group" -> () -> {
+                int a = store.aggregate(form, allFields, new AggregateSpec(AggregateOp.SUM, "qty_produced", "machine")).size();
+                int b = store.aggregate(form, allFields, new AggregateSpec(AggregateOp.SUM, "qty_rejected", "machine")).size();
+                return a + b;
+            };
+            case "aggregate_date" -> () -> aggregateDateMonthly(variant, form, allFields);
+            case "count_all" -> () -> {
+                Long c = jdbc.queryForObject("SELECT COUNT(*) FROM form_submission WHERE form_id = ?", Long.class, form.getId());
+                return c == null ? 0 : c.intValue();
+            };
+            case "count_filtered" -> () -> (int) store.count(form, allFields, new QuerySpec().addFilter(FilterCondition.eq("shift", "A")));
+            case "page_first" -> () -> store.query(form, allFields, new QuerySpec().sortBy("prod_date", true).page(0, 50)).size();
+            case "page_deep" -> () -> store.query(form, allFields, new QuerySpec().sortBy("prod_date", true).page(submissionIds.size() / 2 / 50, 50)).size();
+            case "own_scope_page" -> () -> store.query(form, allFields, new QuerySpec().ownerId(ownerUserIds[0]).page(0, 50)).size();
+            case "insert_single" -> () -> {
+                Map<String, Object> row = generator.row(dataRandom);
+                com.notes.notes.forms.entity.FormSubmission header = new com.notes.notes.forms.entity.FormSubmission();
+                header.setForm(form);
+                header.setFormVersion(form.getVersion());
+                header.setCreatedBy(owner);
+                Long id = autowiredSaveSubmission(header);
+                store.save(form, allFields, id, row);
+                submissionIds.add(id);
+                return 1;
+            };
+            case "update_single" -> () -> {
+                Map<String, Object> changes = Map.of(
+                        "part_name", "Updated Part " + System.nanoTime() % 1000,
+                        "qty_produced", 77, "remarks", "updated by benchmark");
+                Long targetId = submissionIds.get(0);
+                Map<String, Object> merged = new LinkedHashMap<>(store.findById(form, allFields, targetId));
+                merged.putAll(changes);
+                store.update(form, allFields, targetId, merged);
+                return 1;
+            };
+            case "delete_single" -> () -> {
+                Map<String, Object> row = generator.row(dataRandom);
+                com.notes.notes.forms.entity.FormSubmission header = new com.notes.notes.forms.entity.FormSubmission();
+                header.setForm(form);
+                header.setFormVersion(form.getVersion());
+                header.setCreatedBy(owner);
+                Long id = autowiredSaveSubmission(header);
+                store.save(form, allFields, id, row);
+                store.delete(form, id);
+                return 1;
+            };
+            default -> throw new IllegalArgumentException("Unsupported op for high-variance rerun: " + op);
+        };
+
+        boolean isWrite = op.equals("insert_single") || op.equals("update_single") || op.equals("delete_single");
+        int warmup = isWrite ? 2 : 5;
+        int runs = 20;
+        for (int i = 0; i < warmup; i++) action.get();
+        for (int run = 1; run <= runs; run++) {
+            long start = System.nanoTime();
+            int rows = action.get();
+            long elapsed = System.nanoTime() - start;
+            csvRows.add(csvRow(variant.label(), size, "A", op, run, ms(elapsed), "ms", rows));
+        }
+
+        teardownCell(variant, form);
     }
 }

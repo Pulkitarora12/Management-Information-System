@@ -35,6 +35,10 @@ public class FormField {
     @Column(nullable = false)
     private boolean required = false;
 
+    /** Metadata-only soft-remove flag - false means the field is retired but its data (if any) is untouched. */
+    @Column(nullable = false)
+    private boolean active = true;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
 
