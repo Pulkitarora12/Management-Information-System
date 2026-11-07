@@ -311,8 +311,8 @@
     <div class="header">
         <h2>Production Entry History</h2>
         <div class="actions">
-            <a th:href="@{/production-entry}" class="btn btn-primary">New Entry</a>
-            <a th:href="@{/production-entry/export}" class="btn btn-secondary">Export</a>
+            <a sec:authorize="@authz.can('PRODUCTION','CREATE')" th:href="@{/production-entry}" class="btn btn-primary">New Entry</a>
+            <a sec:authorize="@authz.can('PRODUCTION','EXPORT')" th:href="@{/production-entry/export}" class="btn btn-secondary">Export</a>
         </div>
     </div>
 

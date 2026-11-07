@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
 <head>
     <title>Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -330,7 +330,7 @@
         <!-- Left Side: Module Cards -->
         <div class="modules-section">
             <!-- Production Module -->
-            <div class="module-card">
+            <div class="module-card" sec:authorize="@authz.can('PRODUCTION','VIEW') or @authz.can('PRODUCTION','CREATE')">
                 <div class="module-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -340,13 +340,13 @@
                 <h3>Production</h3>
                 <p>Daily production entry, shift logs, and efficiency reports.</p>
                 <div class="module-actions">
-                    <a th:href="@{/production-entry}" class="module-btn module-btn-primary">Entry</a>
-                    <a th:href="@{/production-entry/getAll}" class="module-btn module-btn-secondary">View Production History</a>
+                    <a sec:authorize="@authz.can('PRODUCTION','CREATE')" th:href="@{/production-entry}" class="module-btn module-btn-primary">Entry</a>
+                    <a sec:authorize="@authz.can('PRODUCTION','VIEW')" th:href="@{/production-entry/getAll}" class="module-btn module-btn-secondary">View Production History</a>
                 </div>
             </div>
 
             <!-- RMIR & Quality Module -->
-            <div class="module-card">
+            <div class="module-card" sec:authorize="@authz.can('RMIR','VIEW') or @authz.can('RMIR','CREATE')">
                 <div class="module-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -356,13 +356,13 @@
                 <h3>RMIR & Quality</h3>
                 <p>Raw Material Inspection Reports and Quality Observations.</p>
                 <div class="module-actions">
-                    <a th:href="@{/rmir-entry}" class="module-btn module-btn-primary">New RMIR</a>
-                    <a th:href="@{/rmir-entry/getAll}" class="module-btn module-btn-secondary">View RMIR History</a>
+                    <a sec:authorize="@authz.can('RMIR','CREATE')" th:href="@{/rmir-entry}" class="module-btn module-btn-primary">New RMIR</a>
+                    <a sec:authorize="@authz.can('RMIR','VIEW')" th:href="@{/rmir-entry/getAll}" class="module-btn module-btn-secondary">View RMIR History</a>
                 </div>
             </div>
 
             <!-- Generic Masters Module -->
-            <div class="module-card">
+            <div class="module-card" sec:authorize="@authz.can('MASTERS','VIEW')">
                 <div class="module-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -372,12 +372,12 @@
                 <p>Manage custom data templates for multiple system modules.</p>
                 <div class="module-actions">
                     <a th:href="@{/masters}" class="module-btn module-btn-primary">Master List</a>
-                    <a th:href="@{/masters/new}" class="module-btn module-btn-secondary">Create Master</a>
+                    <a sec:authorize="@authz.can('MASTERS','CREATE')" th:href="@{/masters/new}" class="module-btn module-btn-secondary">Create Master</a>
                 </div>
             </div>
 
             <!-- HR Module -->
-            <div class="module-card">
+            <div class="module-card" sec:authorize="@authz.can('HR_EMPLOYEE','VIEW') or @authz.can('HR_INOUT','VIEW')">
                 <div class="module-icon" style="background: #2e7d32;">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -386,14 +386,14 @@
                 <h3>HR Module</h3>
                 <p>Manage employee database, imports, document uploads, and records.</p>
                 <div class="module-actions">
-                    <a th:href="@{/hr/employee-master}" class="module-btn" style="background: #2e7d32; color: white;">Employee Master</a>
-                    <a th:href="@{/hr/in-out}" class="module-btn module-btn-secondary">In & Out Logs</a>
-                    <a th:href="@{/hr/in-out/monthly-summary}" class="module-btn module-btn-secondary">Monthly Summary</a>
+                    <a sec:authorize="@authz.can('HR_EMPLOYEE','VIEW')" th:href="@{/hr/employee-master}" class="module-btn" style="background: #2e7d32; color: white;">Employee Master</a>
+                    <a sec:authorize="@authz.can('HR_INOUT','VIEW')" th:href="@{/hr/in-out}" class="module-btn module-btn-secondary">In & Out Logs</a>
+                    <a sec:authorize="@authz.can('HR_INOUT','VIEW')" th:href="@{/hr/in-out/monthly-summary}" class="module-btn module-btn-secondary">Monthly Summary</a>
                 </div>
             </div>
 
             <!-- Task Management Module -->
-            <div class="module-card">
+            <div class="module-card" sec:authorize="@authz.can('TASKS','VIEW') or @authz.can('TASKS','CREATE')">
                 <div class="module-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none"
                          viewBox="0 0 24 24" stroke="currentColor">
@@ -406,11 +406,11 @@
                 <h3>Task Management</h3>
                 <p>Create, assign, and track tasks across teams and projects.</p>
                 <div class="module-actions">
-                    <a th:href="@{/tasks/new}" class="module-btn module-btn-primary">
+                    <a sec:authorize="@authz.can('TASKS','CREATE')" th:href="@{/tasks/new}" class="module-btn module-btn-primary">
                         Create Task
                     </a>
 
-                    <a th:href="@{/tasks}" class="module-btn module-btn-secondary">
+                    <a sec:authorize="@authz.can('TASKS','VIEW')" th:href="@{/tasks}" class="module-btn module-btn-secondary">
                         Manage Task
                     </a>
 
