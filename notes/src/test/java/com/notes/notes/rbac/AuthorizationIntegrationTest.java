@@ -207,6 +207,46 @@ class AuthorizationIntegrationTest {
         assertThat(authorizationService.can(user.getUserId(), "MASTERS", "DELETE")).isFalse();
     }
 
+    @Test
+    void standardUserCanSeeFormBuilderButNotAdminIt() {
+        User user = persistUser("std-user-4", "std-user-4@example.com");
+        assignRole(user, "STANDARD_USER");
+
+        // V8 migration: STANDARD_USER gets the top-level Create Form / List Forms buttons
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "VIEW")).isTrue();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "CREATE")).isTrue();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "EDIT")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "DELETE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "ADMIN")).isFalse();
+    }
+
+    @Test
+    void customFormResourceGrantsAreIndependentPerForm() {
+        // Mirrors FormDefinitionService.createForm()'s auto-registration (D2) without
+        // going through the forms/storage layer - just the resource + permission rows.
+        var resource = resourceService.registerResource("FORM_999", "Test Form", com.notes.notes.rbac.entity.ResourceType.FORM);
+
+        RbacRole viewOnlyRole = roleService.createRole(
+                "TEST_FORM_999_VIEW_ONLY", "Form 999 View Only", "Test-only role: FORM_999:VIEW alone");
+        Long viewPermissionId = rbacPermissionRepository
+                .findByResourceIdAndActionId(resource.getId(), rbacActionRepository.findByActionKey("VIEW").orElseThrow().getId())
+                .orElseThrow().getId();
+        roleService.savePermissionGrid(viewOnlyRole.getId(), Map.of(viewPermissionId, PermissionScope.ALL));
+
+        User user = persistUser("form-999-viewer", "form-999-viewer@example.com");
+        userRoleAssignmentService.setRolesForUser(user.getUserId(), Set.of(viewOnlyRole.getId()));
+
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "VIEW")).isTrue();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "CREATE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "EDIT")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "DELETE")).isFalse();
+        // and an unrelated form (different FORM_<id> resource) grants nothing here
+        assertThat(authorizationService.can(user.getUserId(), "FORM_998", "VIEW")).isFalse();
+    }
+
+    @Autowired
+    private com.notes.notes.rbac.service.ResourceService resourceService;
+
     private void assignRole(User user, String roleKey) {
         RbacRole role = rbacRoleRepository.findByRoleKey(roleKey).orElseThrow();
         userRoleAssignmentService.setRolesForUser(user.getUserId(), Set.of(role.getId()));

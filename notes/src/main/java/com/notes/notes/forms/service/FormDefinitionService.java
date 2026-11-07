@@ -54,4 +54,8 @@ public class FormDefinitionService {
         return formDefinitionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Form not found: " + id));
     }
+
+    public List<FormDefinition> listActiveForms() {
+        return formDefinitionRepository.findAll().stream().filter(FormDefinition::isActive).toList();
+    }
 }

@@ -376,6 +376,21 @@
                 </div>
             </div>
 
+            <!-- Custom Forms Module -->
+            <div class="module-card" sec:authorize="@authz.can('FORM_BUILDER','VIEW') or @authz.can('FORM_BUILDER','CREATE')">
+                <div class="module-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3>Custom Forms</h3>
+                <p>Build and fill out custom data-entry forms.</p>
+                <div class="module-actions">
+                    <a sec:authorize="@authz.can('FORM_BUILDER','CREATE')" th:href="@{/custom-forms/new}" class="module-btn module-btn-secondary">Create Form</a>
+                    <a sec:authorize="@authz.can('FORM_BUILDER','VIEW')" th:href="@{/custom-forms}" class="module-btn module-btn-primary">List Forms</a>
+                </div>
+            </div>
+
             <!-- HR Module -->
             <div class="module-card" sec:authorize="@authz.can('HR_EMPLOYEE','VIEW') or @authz.can('HR_INOUT','VIEW')">
                 <div class="module-icon" style="background: #2e7d32;">
