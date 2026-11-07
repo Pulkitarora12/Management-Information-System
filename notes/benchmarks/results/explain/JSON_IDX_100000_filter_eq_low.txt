@@ -1,8 +1,8 @@
 -- JSON_IDX @ 100000 : filter_eq_low
--- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 100 AND j.data->>'$.shift' = 'A'
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 174 AND j.data->>'$.shift' = 'A'
 
--> Nested loop inner join  (cost=23577 rows=17465) (actual time=0.113..493 rows=33284 loops=1)
-    -> Index lookup on j using idx_gc_2026 (gc_2026='A')  (cost=6418 rows=49027) (actual time=0.0892..297 rows=33284 loops=1)
-    -> Filter: (fs.form_id = 100)  (cost=0.25 rows=0.356) (actual time=0.00498..0.00521 rows=1 loops=33284)
-        -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00437..0.00443 rows=1 loops=33284)
+-> Nested loop inner join  (cost=23577 rows=15275) (actual time=0.0716..240 rows=33284 loops=1)
+    -> Index lookup on j using idx_gc_3109 (gc_3109='A')  (cost=6418 rows=49027) (actual time=0.0553..147 rows=33284 loops=1)
+    -> Filter: (fs.form_id = 174)  (cost=0.25 rows=0.312) (actual time=0.00228..0.00244 rows=1 loops=33284)
+        -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.002..0.00205 rows=1 loops=33284)
 

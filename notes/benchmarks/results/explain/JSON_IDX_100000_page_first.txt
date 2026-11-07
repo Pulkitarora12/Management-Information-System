@@ -1,9 +1,9 @@
 -- JSON_IDX @ 100000 : page_first
--- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 100 ORDER BY j.data->>'$.prod_date' DESC LIMIT 50
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 174 ORDER BY j.data->>'$.prod_date' DESC LIMIT 50
 
--> Limit: 50 row(s)  (cost=24528 rows=49.9) (actual time=0.0642..0.375 rows=50 loops=1)
-    -> Nested loop inner join  (cost=24528 rows=49.9) (actual time=0.0633..0.37 rows=50 loops=1)
-        -> Index scan on j using idx_gc_2028 (reverse)  (cost=0.741 rows=140) (actual time=0.0522..0.231 rows=50 loops=1)
-        -> Filter: (fs.form_id = 100)  (cost=0.25 rows=0.356) (actual time=0.00244..0.00255 rows=1 loops=50)
-            -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00226..0.00229 rows=1 loops=50)
+-> Limit: 50 row(s)  (cost=24531 rows=49.8) (actual time=0.0759..0.438 rows=50 loops=1)
+    -> Nested loop inner join  (cost=24531 rows=49.8) (actual time=0.075..0.433 rows=50 loops=1)
+        -> Index scan on j using idx_gc_3111 (reverse)  (cost=0.85 rows=160) (actual time=0.0605..0.274 rows=50 loops=1)
+        -> Filter: (fs.form_id = 174)  (cost=0.25 rows=0.312) (actual time=0.00284..0.00295 rows=1 loops=50)
+            -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00261..0.00265 rows=1 loops=50)
 
