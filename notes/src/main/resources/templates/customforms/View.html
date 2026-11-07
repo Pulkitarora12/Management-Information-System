@@ -25,7 +25,7 @@
 <div class="container">
     <div class="header">
         <h2 th:text="${form.name}"></h2>
-        <a sec:authorize="@authz.can('FORM_' + ${form.id}, 'CREATE')" class="new-link"
+        <a th:if="${@authz.can('FORM_' + form.id, 'CREATE')}" class="new-link"
            th:href="@{/custom-forms/{id}/entry(id=${form.id})}">+ New Entry</a>
     </div>
     <div class="card">
@@ -40,9 +40,9 @@
             <tr th:each="r : ${records}">
                 <td th:each="field : ${form.fields}" th:text="${r.values().get(field.fieldKey)}"></td>
                 <td>
-                    <a class="edit-link" sec:authorize="@authz.can('FORM_' + ${form.id}, 'EDIT')"
+                    <a class="edit-link" th:if="${@authz.can('FORM_' + form.id, 'EDIT')}"
                        th:href="@{/custom-forms/{id}/entry/{sid}(id=${form.id},sid=${r.submissionId()})}">Edit</a>
-                    <form style="display:inline" method="post" sec:authorize="@authz.can('FORM_' + ${form.id}, 'DELETE')"
+                    <form style="display:inline" method="post" th:if="${@authz.can('FORM_' + form.id, 'DELETE')}"
                           th:action="@{/custom-forms/{id}/entry/{sid}/delete(id=${form.id},sid=${r.submissionId()})}">
                         <button type="submit" class="delete-btn" onclick="return confirm('Delete this entry?')">Delete</button>
                     </form>

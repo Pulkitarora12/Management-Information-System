@@ -31,13 +31,13 @@
     </div>
     <div class="grid">
         <div class="form-card" th:each="f : ${forms}"
-             sec:authorize="@authz.can('FORM_' + ${f.id}, 'VIEW') or @authz.can('FORM_' + ${f.id}, 'CREATE')">
+             th:if="${@authz.can('FORM_' + f.id, 'VIEW') or @authz.can('FORM_' + f.id, 'CREATE')}">
             <h3 th:text="${f.name}"></h3>
             <p th:text="${f.description}"></p>
             <div class="actions">
-                <a class="btn btn-view" sec:authorize="@authz.can('FORM_' + ${f.id}, 'VIEW')"
+                <a class="btn btn-view" th:if="${@authz.can('FORM_' + f.id, 'VIEW')}"
                    th:href="@{/custom-forms/{id}/view(id=${f.id})}">View</a>
-                <a class="btn btn-entry" sec:authorize="@authz.can('FORM_' + ${f.id}, 'CREATE')"
+                <a class="btn btn-entry" th:if="${@authz.can('FORM_' + f.id, 'CREATE')}"
                    th:href="@{/custom-forms/{id}/entry(id=${f.id})}">Entry</a>
             </div>
         </div>
