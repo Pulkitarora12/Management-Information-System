@@ -1,0 +1,8 @@
+-- RELATIONAL_BP1G @ 100000 : aggregate_date
+-- SQL: SELECT DATE_FORMAT(f_4721,'%Y-%m') ym, SUM(f_4725) FROM form_data_289 WHERE f_4721 BETWEEN '2026-01-01' AND '2026-12-31' GROUP BY ym
+
+-> Table scan on <temporary>  (actual time=336..336 rows=12 loops=1)
+    -> Aggregate using temporary table  (actual time=336..336 rows=12 loops=1)
+        -> Filter: (form_data_289.f_4721 between '2026-01-01' and '2026-12-31')  (cost=10155 rows=49613) (actual time=0.0304..217 rows=49990 loops=1)
+            -> Table scan on form_data_289  (cost=10155 rows=99226) (actual time=0.0259..93.6 rows=100006 loops=1)
+

@@ -36,6 +36,7 @@
 
         /* ===================== LIST ALL TEMPLATES ===================== */
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','VIEW')")
         @GetMapping
         public String getAllTemplates(Model model) {
 
@@ -47,6 +48,7 @@
 
         /* ===================== SHOW CREATE FORM ===================== */
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','CREATE')")
         @GetMapping("/new")
         public String showCreateTemplateForm(Model model) {
 
@@ -60,6 +62,7 @@
 
         /* ===================== CREATE TEMPLATE ===================== */
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','CREATE')")
         @PostMapping("/new")
         public String createTemplate(
                 @ModelAttribute TemplateDTO templateDTO,
@@ -74,6 +77,7 @@
 
         /* ===================== ACTIVATE TEMPLATE ===================== */
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','EDIT')")
         @Transactional
         @PostMapping("/{id}/activate")
         public String activateTemplate(@PathVariable Long id) {
@@ -86,6 +90,7 @@
 
         /* ===================== DEACTIVATE TEMPLATE ===================== */
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','EDIT')")
         @PostMapping("/{id}/deactivate")
         public String deactivateTemplate(@PathVariable Long id) {
 
@@ -95,6 +100,7 @@
 
         /* ===================== DELETE TEMPLATE ===================== */
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','DELETE')")
         @PostMapping("/{id}/delete")
         public String deleteTemplate(@PathVariable Long id) {
 
@@ -102,6 +108,7 @@
             return "redirect:/template";
         }
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','VIEW')")
         @GetMapping("/{id}/view")
         public String viewTemplate(@PathVariable Long id, Model model) {
             TaskTemplate taskTemplate = taskTemplateService.findById(id);
@@ -125,6 +132,7 @@
             return "tasks/templateTasks";
         }
 
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','EDIT')")
         @Transactional
         @GetMapping("/due")
         public String processDueTemplates(RedirectAttributes redirectAttributes) {
@@ -148,6 +156,7 @@
         }
 
         // Add manual trigger endpoint
+        @PreAuthorize("@authz.can('TASK_TEMPLATES','EDIT')")
         @PostMapping("/{id}/create-task-now")
         public String createTaskNow(@PathVariable Long id,
                                     @ModelAttribute("loggedInUser") User user,

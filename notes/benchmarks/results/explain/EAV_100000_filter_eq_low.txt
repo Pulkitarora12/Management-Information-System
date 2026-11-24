@@ -1,0 +1,9 @@
+-- EAV @ 100000 : filter_eq_low
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_value fv0 ON fv0.submission_id = fs.id AND fv0.field_id = 2063 AND fv0.value_text = 'A' WHERE fs.form_id = 101
+
+-> Nested loop inner join  (cost=34272 rows=17548) (actual time=2.36..515 rows=33284 loops=1)
+    -> Filter: (fv0.value_text = 'A')  (cost=8690 rows=55884) (actual time=0.502..271 rows=33284 loops=1)
+        -> Index lookup on fv0 using idx_form_value_field_text (field_id=2063, value_text='A')  (cost=8690 rows=55884) (actual time=0.497..260 rows=33284 loops=1)
+    -> Filter: (fs.form_id = 101)  (cost=0.358 rows=0.314) (actual time=0.00679..0.00695 rows=1 loops=33284)
+        -> Single-row index lookup on fs using PRIMARY (id=fv0.submission_id)  (cost=0.358 rows=1) (actual time=0.0065..0.00655 rows=1 loops=33284)
+

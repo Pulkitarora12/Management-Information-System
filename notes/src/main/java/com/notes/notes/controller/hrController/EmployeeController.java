@@ -8,6 +8,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,7 @@ public class EmployeeController {
     @Autowired
     private EmployeeService employeeService;
 
+    @PreAuthorize("@authz.can('HR_EMPLOYEE','VIEW')")
     @GetMapping
     public String showEmployeeMaster(Model model) {
         List<Employee> employees = employeeService.getAllEmployees();
@@ -34,6 +36,7 @@ public class EmployeeController {
         return "hr/employee-master";
     }
 
+    @PreAuthorize("@authz.can('HR_EMPLOYEE','CREATE')")
     @PostMapping("/upload")
     public String uploadEmployeeFile(
             @RequestParam("file") MultipartFile file,
@@ -55,6 +58,7 @@ public class EmployeeController {
         return "redirect:/hr/employee-master";
     }
 
+    @PreAuthorize("@authz.can('HR_EMPLOYEE','VIEW')")
     @GetMapping("/{id}")
     public String viewEmployeeDetails(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
         Employee employee = employeeService.getEmployeeById(id).orElse(null);
@@ -66,6 +70,7 @@ public class EmployeeController {
         return "hr/employee-detail";
     }
 
+    @PreAuthorize("@authz.can('HR_EMPLOYEE','EDIT')")
     @PostMapping("/{id}/upload-docs")
     public String uploadEmployeeDocs(
             @PathVariable Long id,
@@ -103,6 +108,7 @@ public class EmployeeController {
         return "redirect:/hr/employee-master/" + id;
     }
 
+    @PreAuthorize("@authz.can('HR_EMPLOYEE','VIEW')")
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {

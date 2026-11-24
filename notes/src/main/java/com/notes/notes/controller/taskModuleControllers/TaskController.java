@@ -11,6 +11,7 @@ import com.notes.notes.service.authServices.UserService;
 import com.notes.notes.service.taskModuleServices.*;
 import com.notes.notes.util.TimeUtil;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +47,7 @@ public class TaskController {
         this.taskTemplateService = taskTemplateService;
     }
 
+    @PreAuthorize("@authz.can('TASKS','VIEW')")
     @GetMapping
     public String listOpenTasks(Model model,
                                 @RequestParam(required = false) String search,
@@ -97,6 +99,7 @@ public class TaskController {
         return "tasks/list";
     }
 
+    @PreAuthorize("@authz.can('TASKS','VIEW')")
     @GetMapping("/closed")
     public String listClosedTasks(Model model,
                                   @RequestParam(required = false) String search,
@@ -150,6 +153,7 @@ public class TaskController {
 
 
 
+    @PreAuthorize("@authz.can('TASKS','CREATE')")
     @GetMapping("/new")
     public String createTaskPage(
             @RequestParam(required = false) Long templateId,
@@ -182,6 +186,7 @@ public class TaskController {
 
 
 
+    @PreAuthorize("@authz.can('TASKS','CREATE')")
     @PostMapping
     public String createTask(
             @RequestParam String title,
@@ -205,6 +210,7 @@ public class TaskController {
     }
 
 
+    @PreAuthorize("@authz.can('TASKS','VIEW')")
     @GetMapping("/{taskId}")
     public String taskDetails(@PathVariable Long taskId, Model model,
                         @ModelAttribute("loggedInUser") User loggedInUser,
@@ -236,6 +242,7 @@ public class TaskController {
         return "tasks/details";
     }
 
+    @PreAuthorize("@authz.can('TASKS','EDIT')")
     @PostMapping("/{taskId}/status")
     public String updateStatus(@PathVariable Long taskId,
                                @RequestParam Task.TaskStatus status,
@@ -285,6 +292,7 @@ public class TaskController {
         return "redirect:/tasks/" + taskId;
     }
 
+    @PreAuthorize("@authz.can('TASKS','EDIT')")
     @GetMapping("/{taskId}/assign")
     public String assignPage(@PathVariable Long taskId, Model model) {
 
@@ -299,6 +307,7 @@ public class TaskController {
         return "tasks/assign";
     }
 
+    @PreAuthorize("@authz.can('TASKS','EDIT')")
     @PostMapping("/{taskId}/assign")
     public String assignUser(@PathVariable Long taskId,
                              @RequestParam(required = false) Long userId,
@@ -341,6 +350,7 @@ public class TaskController {
         return "redirect:/tasks/" + taskId + "/assign";
     }
 
+    @PreAuthorize("@authz.can('TASKS','EDIT')")
     @PostMapping("/{taskId}/comment")
     public String addComment(@PathVariable Long taskId,
                              @RequestParam String content,
@@ -371,6 +381,7 @@ public class TaskController {
         return "redirect:/tasks/" + taskId;
     }
 
+    @PreAuthorize("@authz.can('TASKS','DELETE')")
     @PostMapping("/{taskId}/delete")
     public String deleteTask(@PathVariable Long taskId,
                              @ModelAttribute("loggedInUser") User loggedInUser,

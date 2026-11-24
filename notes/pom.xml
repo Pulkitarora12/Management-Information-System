@@ -132,6 +132,11 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
+        <dependency>
+            <groupId>net.objecthunter</groupId>
+            <artifactId>exp4j</artifactId>
+            <version>0.4.8</version>
+        </dependency>
     </dependencies>
 
 	<build>
@@ -139,6 +144,18 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- StorageBenchmarkRunner writes a real (possibly large) dataset to mis_bench
+					     and takes minutes to run - never part of the normal build, only
+					     `mvn test -Dtest=StorageBenchmarkRunner` explicitly. -->
+					<excludes>
+						<exclude>**/benchmarks/**</exclude>
+					</excludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

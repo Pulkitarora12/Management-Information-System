@@ -1,0 +1,10 @@
+-- JSON_BP1G @ 100000 : page_first
+-- SQL: SELECT fs.id FROM form_submission fs JOIN form_submission_json j ON j.submission_id = fs.id WHERE fs.form_id = 285 ORDER BY j.data->>'$.prod_date' DESC LIMIT 50
+
+-> Limit: 50 row(s)  (cost=44510 rows=50) (actual time=1424..1424 rows=50 loops=1)
+    -> Nested loop inner join  (cost=44510 rows=30455) (actual time=1424..1424 rows=50 loops=1)
+        -> Sort: json_unquote(json_extract(j.`data`,'$.prod_date')) DESC  (cost=10296 rows=97753) (actual time=1424..1424 rows=50 loops=1)
+            -> Table scan on j  (cost=10296 rows=97753) (actual time=0.017..151 rows=100006 loops=1)
+        -> Filter: (fs.form_id = 285)  (cost=0.25 rows=0.312) (actual time=0.00668..0.0101 rows=1 loops=50)
+            -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.0056..0.00565 rows=1 loops=50)
+

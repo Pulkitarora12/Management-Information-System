@@ -1,0 +1,9 @@
+-- EAV_NAIVE_BP1G @ 100000 : page_first
+-- SQL: SELECT fs.id FROM form_submission fs WHERE fs.form_id = 288 ORDER BY (SELECT value_date FROM form_value WHERE submission_id = fs.id AND field_id = 4689) DESC LIMIT 50
+
+-> Limit: 50 row(s)  (cost=19731 rows=50) (actual time=1934..1934 rows=50 loops=1)
+    -> Sort: (select #2) DESC, limit input to 50 row(s) per chunk  (cost=19731 rows=195878) (actual time=1934..1934 rows=50 loops=1)
+        -> Index lookup on fs using idx_form_submission_form_created_at (form_id=288)  (cost=19731 rows=195878) (actual time=2..80.1 rows=100012 loops=1)
+-> Select #2 (subquery in projection; dependent)
+    -> Single-row index lookup on form_value using uk_form_value_submission_field (submission_id=fs.id, field_id=4689)  (cost=0.35 rows=1) (actual time=0.0151..0.0152 rows=1 loops=100012)
+

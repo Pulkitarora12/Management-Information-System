@@ -1,0 +1,6 @@
+-- RELATIONAL_BP1G @ 100000 : page_first
+-- SQL: SELECT submission_id FROM form_data_289 ORDER BY f_4721 DESC LIMIT 50
+
+-> Limit: 50 row(s)  (cost=0.12 rows=50) (actual time=0.0611..0.0899 rows=50 loops=1)
+    -> Covering index scan on form_data_289 using idx_f_4721 (reverse)  (cost=0.12 rows=50) (actual time=0.0602..0.0857 rows=50 loops=1)
+

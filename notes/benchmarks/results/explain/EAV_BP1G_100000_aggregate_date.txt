@@ -1,0 +1,10 @@
+-- EAV_BP1G @ 100000 : aggregate_date
+-- SQL: SELECT DATE_FORMAT(d.value_date,'%Y-%m') ym, SUM(w.value_num) FROM form_value d JOIN form_value w ON w.submission_id = d.submission_id AND w.field_id = 4661 WHERE d.field_id = 4657 AND d.value_date BETWEEN '2026-01-01' AND '2026-12-31' GROUP BY ym
+
+-> Table scan on <temporary>  (actual time=1149..1149 rows=12 loops=1)
+    -> Aggregate using temporary table  (actual time=1149..1149 rows=12 loops=1)
+        -> Nested loop inner join  (cost=11061 rows=17688) (actual time=0.182..989 rows=49990 loops=1)
+            -> Filter: (d.value_date between '2026-01-01' and '2026-12-31')  (cost=4870 rows=17688) (actual time=0.15..465 rows=49990 loops=1)
+                -> Index lookup on d using idx_form_value_field_num (field_id=4657)  (cost=4870 rows=159208) (actual time=0.143..323 rows=100006 loops=1)
+            -> Single-row index lookup on w using uk_form_value_submission_field (submission_id=d.submission_id, field_id=4661)  (cost=0.25 rows=1) (actual time=0.0099..0.00997 rows=1 loops=49990)
+

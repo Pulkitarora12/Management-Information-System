@@ -6,8 +6,12 @@ import com.notes.notes.entity.authEntities.User;
 import com.notes.notes.rbac.entity.PermissionScope;
 import com.notes.notes.rbac.entity.RbacRole;
 import com.notes.notes.rbac.repository.RbacRoleRepository;
+import com.notes.notes.rbac.repository.RbacActionRepository;
+import com.notes.notes.rbac.repository.RbacPermissionRepository;
+import com.notes.notes.rbac.repository.RbacResourceRepository;
 import com.notes.notes.rbac.service.AuthorizationService;
 import com.notes.notes.rbac.service.PermissionGuard;
+import com.notes.notes.rbac.service.RoleService;
 import com.notes.notes.rbac.service.UserRoleAssignmentService;
 import com.notes.notes.repository.authRepo.RoleRepository;
 import com.notes.notes.repository.authRepo.UserRepository;
@@ -25,6 +29,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +65,18 @@ class AuthorizationIntegrationTest {
 
     @Autowired
     private PermissionGuard permissionGuard;
+
+    @Autowired
+    private RoleService roleService;
+
+    @Autowired
+    private RbacResourceRepository rbacResourceRepository;
+
+    @Autowired
+    private RbacActionRepository rbacActionRepository;
+
+    @Autowired
+    private RbacPermissionRepository rbacPermissionRepository;
 
     @AfterEach
     void clearSecurityContext() {
@@ -152,6 +169,83 @@ class AuthorizationIntegrationTest {
         assertThat(authorizationService.can(user.getUserId(), "ROLES", "ADMIN")).isFalse();
         assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "ADMIN")).isFalse();
     }
+
+    @Test
+    void customRoleWithProductionViewOnlyCanListProductionButIsDeniedCreateRmirAndMasters() {
+        RbacRole customRole = roleService.createRole(
+                "TEST_PRODUCTION_VIEW_ONLY", "Production View Only", "Test-only role: PRODUCTION:VIEW alone");
+
+        Long permissionId = rbacPermissionRepository
+                .findByResourceIdAndActionId(
+                        rbacResourceRepository.findByResKey("PRODUCTION").orElseThrow().getId(),
+                        rbacActionRepository.findByActionKey("VIEW").orElseThrow().getId())
+                .orElseThrow()
+                .getId();
+        roleService.savePermissionGrid(customRole.getId(), Map.of(permissionId, PermissionScope.ALL));
+
+        User user = persistUser("prod-view-only-1", "prod-view-only-1@example.com");
+        userRoleAssignmentService.setRolesForUser(user.getUserId(), Set.of(customRole.getId()));
+
+        // CAN list production entries (GET /production-entry/getAll requires PRODUCTION:VIEW)
+        assertThat(authorizationService.can(user.getUserId(), "PRODUCTION", "VIEW")).isTrue();
+
+        // Denied CREATE on PRODUCTION (POST /production-entry and GET /production-entry
+        // both require PRODUCTION:CREATE -> would 403 via @PreAuthorize("@authz.can('PRODUCTION','CREATE')"))
+        assertThat(authorizationService.can(user.getUserId(), "PRODUCTION", "CREATE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "PRODUCTION", "DELETE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "PRODUCTION", "EXPORT")).isFalse();
+
+        // Denied every RMIR endpoint (zero RMIR permissions granted)
+        assertThat(authorizationService.can(user.getUserId(), "RMIR", "VIEW")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "RMIR", "CREATE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "RMIR", "DELETE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "RMIR", "EXPORT")).isFalse();
+
+        // Denied every Masters endpoint (zero MASTERS permissions granted)
+        assertThat(authorizationService.can(user.getUserId(), "MASTERS", "VIEW")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "MASTERS", "CREATE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "MASTERS", "DELETE")).isFalse();
+    }
+
+    @Test
+    void standardUserCanSeeFormBuilderButNotAdminIt() {
+        User user = persistUser("std-user-4", "std-user-4@example.com");
+        assignRole(user, "STANDARD_USER");
+
+        // V8 migration: STANDARD_USER gets the top-level Create Form / List Forms buttons
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "VIEW")).isTrue();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "CREATE")).isTrue();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "EDIT")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "DELETE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_BUILDER", "ADMIN")).isFalse();
+    }
+
+    @Test
+    void customFormResourceGrantsAreIndependentPerForm() {
+        // Mirrors FormDefinitionService.createForm()'s auto-registration (D2) without
+        // going through the forms/storage layer - just the resource + permission rows.
+        var resource = resourceService.registerResource("FORM_999", "Test Form", com.notes.notes.rbac.entity.ResourceType.FORM);
+
+        RbacRole viewOnlyRole = roleService.createRole(
+                "TEST_FORM_999_VIEW_ONLY", "Form 999 View Only", "Test-only role: FORM_999:VIEW alone");
+        Long viewPermissionId = rbacPermissionRepository
+                .findByResourceIdAndActionId(resource.getId(), rbacActionRepository.findByActionKey("VIEW").orElseThrow().getId())
+                .orElseThrow().getId();
+        roleService.savePermissionGrid(viewOnlyRole.getId(), Map.of(viewPermissionId, PermissionScope.ALL));
+
+        User user = persistUser("form-999-viewer", "form-999-viewer@example.com");
+        userRoleAssignmentService.setRolesForUser(user.getUserId(), Set.of(viewOnlyRole.getId()));
+
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "VIEW")).isTrue();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "CREATE")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "EDIT")).isFalse();
+        assertThat(authorizationService.can(user.getUserId(), "FORM_999", "DELETE")).isFalse();
+        // and an unrelated form (different FORM_<id> resource) grants nothing here
+        assertThat(authorizationService.can(user.getUserId(), "FORM_998", "VIEW")).isFalse();
+    }
+
+    @Autowired
+    private com.notes.notes.rbac.service.ResourceService resourceService;
 
     private void assignRole(User user, String roleKey) {
         RbacRole role = rbacRoleRepository.findByRoleKey(roleKey).orElseThrow();

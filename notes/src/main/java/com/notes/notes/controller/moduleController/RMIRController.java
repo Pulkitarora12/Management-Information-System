@@ -36,6 +36,7 @@ public class RMIRController {
     @Autowired
     private MasterService masterService;
     
+    @PreAuthorize("@authz.can('RMIR','CREATE')")
     @GetMapping
     public String showForm(Model model, @ModelAttribute("loggedInUser") User loggedInUser,
                            @AuthenticationPrincipal UserDetails userDetails) {
@@ -62,6 +63,7 @@ public class RMIRController {
     }
 
 
+    @PreAuthorize("@authz.can('RMIR','CREATE')")
     @PostMapping
     public String submitRMIR(@ModelAttribute RMIRRequestDTO dto,
                              RedirectAttributes redirectAttributes) {
@@ -82,6 +84,7 @@ public class RMIRController {
         return "redirect:/rmir-entry";
     }
 
+    @PreAuthorize("@authz.can('RMIR','VIEW')")
     @GetMapping("/getAll")
     public String getRMIRHistory(
             @RequestParam(required = false) Integer month,
@@ -118,6 +121,7 @@ public class RMIRController {
     }
 
 
+    @PreAuthorize("@authz.can('RMIR','EXPORT')")
     @GetMapping("/export")
     public ResponseEntity<String> exportToCSV() {
 
@@ -198,6 +202,7 @@ public class RMIRController {
     }
 
 
+    @PreAuthorize("@authz.can('RMIR','VIEW')")
     @GetMapping("/{id}/observations")
     public String viewObservations(@PathVariable Long id, Model model) {
         RMIR rmir = repository.findById(id).orElse(null);

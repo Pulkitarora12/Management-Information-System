@@ -1,0 +1,11 @@
+-- JSON_IDX_BP1G @ 100000 : aggregate_date
+-- SQL: SELECT DATE_FORMAT(j.data->>'$.prod_date','%Y-%m') ym, SUM(CAST(j.data->>'$.total_weight' AS DECIMAL(20,6))) FROM form_submission_json j JOIN form_submission fs ON fs.id = j.submission_id WHERE fs.form_id = 290 AND j.data->>'$.prod_date' BETWEEN '2026-01-01' AND '2026-12-31' GROUP BY ym
+
+-> Table scan on <temporary>  (actual time=1234..1234 rows=12 loops=1)
+    -> Aggregate using temporary table  (actual time=1234..1234 rows=12 loops=1)
+        -> Nested loop inner join  (cost=27573 rows=16802) (actual time=0.0673..864 rows=49990 loops=1)
+            -> Filter: (j.gc_4758 between '2026-01-01' and '2026-12-31')  (cost=10358 rows=49185) (actual time=0.0527..614 rows=49990 loops=1)
+                -> Table scan on j  (cost=10358 rows=98371) (actual time=0.0425..473 rows=100006 loops=1)
+            -> Filter: (fs.form_id = 290)  (cost=0.25 rows=0.342) (actual time=0.00422..0.00447 rows=1 loops=49990)
+                -> Single-row index lookup on fs using PRIMARY (id=j.submission_id)  (cost=0.25 rows=1) (actual time=0.00356..0.00364 rows=1 loops=49990)
+

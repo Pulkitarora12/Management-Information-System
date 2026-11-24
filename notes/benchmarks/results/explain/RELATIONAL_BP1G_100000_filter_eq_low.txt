@@ -1,0 +1,5 @@
+-- RELATIONAL_BP1G @ 100000 : filter_eq_low
+-- SQL: SELECT submission_id FROM form_data_289 WHERE f_4719 = 'A'
+
+-> Covering index lookup on form_data_289 using idx_f_4719 (f_4719='A')  (cost=7442 rows=49613) (actual time=0.0358..21.6 rows=33284 loops=1)
+
