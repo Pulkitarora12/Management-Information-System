@@ -7,13 +7,13 @@
 
     <style>
         body {
-            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-            background-color: #f5f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f0f4f8;
             padding: 40px;
         }
 
         h2 {
-            color: #2c3e50;
+            color: #2d3748;
             margin-bottom: 20px;
         }
 
@@ -36,7 +36,7 @@
         }
 
         th {
-            color: #34495e;
+            color: #4a5568;
             font-weight: 600;
         }
 
@@ -49,7 +49,7 @@
         }
 
         .btn-view {
-            background-color: #3498db;
+            background-color: #667eea;
             color: #fff;
             border: none;
             padding: 6px 12px;
@@ -67,7 +67,7 @@
         }
 
         .top-actions a button {
-            background-color: #7f8c8d;
+            background-color: #718096;
             color: #fff;
             border: none;
             padding: 8px 14px;
@@ -90,6 +90,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 
 <body>
@@ -129,7 +130,7 @@
     </tr>
 
     <tr th:if="${tasks.isEmpty()}">
-        <td colspan="6" style="text-align:center; color:#7f8c8d;">
+        <td colspan="6" style="text-align:center; color:#718096;">
             No tasks have been created from this template yet.
         </td>
     </tr>
