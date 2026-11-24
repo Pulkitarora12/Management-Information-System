@@ -1,5 +1,6 @@
 package com.notes.notes.service.hrServices;
 
+import com.notes.notes.util.FileStorageConfig;
 import com.notes.notes.entity.hrEntities.Employee;
 import com.notes.notes.repository.hrRepo.EmployeeRepository;
 import org.apache.poi.ss.usermodel.*;
@@ -23,7 +24,7 @@ public class EmployeeService {
     @Autowired
     private EmployeeRepository employeeRepository;
 
-    public static final String UPLOAD_DIR = "C:/apps/MIS/uploads/employee/";
+    public static final String UPLOAD_DIR = FileStorageConfig.UPLOAD_ROOT + "/employee/";
 
     public List<Employee> getAllEmployees() {
         return employeeRepository.findAll();

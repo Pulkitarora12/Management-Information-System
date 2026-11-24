@@ -18,8 +18,11 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${app.base-url}")
+    private String baseUrl;
+
     public void sendVerificationEmailToAdmin(User user, String token) {
-        String verifyLink = "http://localhost:8080/admin/verify?token=" + token;
+        String verifyLink = baseUrl + "/admin/verify?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);   // 🔑 REQUIRED
