@@ -2,30 +2,42 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <!--
-  One consistent "Back to Dashboard" button, included the same way on every
-  authenticated screen via: <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
-  Fixed position + fully inline styles so it renders identically regardless of
-  whatever CSS the host page already has (Tailwind, bespoke <style> blocks, etc.)
-  and never collides with a page's own button classes.
+  Shared top bar with the "Dashboard" button, included on every authenticated screen via:
+  <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
+  Fixed at the top of the page; the style block below reserves room for it so page content
+  is never covered. Fully inline so it looks identical whatever CSS the host page has.
 -->
 <div th:fragment="button">
-    <a th:href="@{/auth/dashboard}"
-       style="position:fixed;bottom:24px;left:24px;z-index:1000;
-              display:inline-flex;align-items:center;gap:8px;
-              background:#667eea;color:#ffffff;text-decoration:none;
-              padding:12px 20px;border-radius:999px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
-              font-size:14px;font-weight:600;
-              box-shadow:0 4px 12px rgba(102,126,234,0.4);
-              transition:background 0.2s ease, transform 0.2s ease;"
-       onmouseover="this.style.background='#5568d3';this.style.transform='translateY(-2px)';"
-       onmouseout="this.style.background='#667eea';this.style.transform='translateY(0)';">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-             stroke-linecap="round" stroke-linejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"/>
-            <polyline points="12 19 5 12 12 5"/>
-        </svg>
-        Dashboard
-    </a>
+    <style>
+        body { padding-top: 64px !important; }
+        .mis-topbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 52px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; box-sizing: border-box;
+            background: #ffffff; border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .mis-topbar .mis-brand { font-size: 15px; font-weight: 700; color: #1a202c; letter-spacing: 0.2px; }
+        .mis-topbar .mis-home {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #667eea; color: #ffffff; text-decoration: none;
+            padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            transition: background 0.2s ease;
+        }
+        .mis-topbar .mis-home:hover { background: #5568d3; }
+    </style>
+    <div class="mis-topbar">
+        <span class="mis-brand">Super Metal MIS</span>
+        <a class="mis-home" th:href="@{/auth/dashboard}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 11l9-8 9 8"/>
+                <path d="M5 10v10h14V10"/>
+            </svg>
+            Dashboard
+        </a>
+    </div>
 </div>
 </body>
 </html>

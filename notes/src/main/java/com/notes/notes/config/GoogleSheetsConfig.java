@@ -11,8 +11,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 
@@ -22,13 +24,18 @@ public class GoogleSheetsConfig {
     @Value("${google.sheets.credentials.file}")
     private String credentialsFile;
 
+    @Value("${google.sheets.credentials.json:}")
+    private String credentialsJson;
+
     @Value("${google.sheets.application.name}")
     private String applicationName;
 
     @Bean
     public Sheets sheetsClient() throws GeneralSecurityException, IOException {
-        // Load credentials from the JSON file
-        InputStream in = new ClassPathResource(credentialsFile).getInputStream();
+        // Prefer the JSON from the environment; fall back to the classpath file
+        InputStream in = credentialsJson != null && !credentialsJson.isBlank()
+                ? new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8))
+                : new ClassPathResource(credentialsFile).getInputStream();
         GoogleCredentials credentials = GoogleCredentials.fromStream(in)
                 .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
 

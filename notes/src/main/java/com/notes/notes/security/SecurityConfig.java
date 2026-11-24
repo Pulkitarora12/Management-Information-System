@@ -6,6 +6,7 @@ import com.notes.notes.entity.authEntities.User;
 import com.notes.notes.rbac.service.UserRoleAssignmentService;
 import com.notes.notes.repository.authRepo.RoleRepository;
 import com.notes.notes.repository.authRepo.UserRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -46,16 +47,21 @@ public class SecurityConfig {
         adminAreaAccess.setExpressionHandler(expressionHandler);
 
         http.authorizeHttpRequests(requests -> requests
-                .requestMatchers("/auth/**", "/verification/**", "/api/csrf-token", "/logout").permitAll()
+                .requestMatchers("/auth/**", "/verification/**", "/api/csrf-token", "/logout", "/css/**").permitAll()
                 .requestMatchers("/admin/**").access(adminAreaAccess)
                 .anyRequest().authenticated()
         );
 
-        http.exceptionHandling(exception ->
-                exception.authenticationEntryPoint(
+        http.exceptionHandling(exception -> exception
+                .authenticationEntryPoint(
                         (request, response, authException) ->
                                 response.sendRedirect("/auth/login")
                 )
+                // Logged-in user without the right permission: friendly page, still HTTP 403
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    request.getRequestDispatcher("/auth/access-denied").forward(request, response);
+                })
         );
 
 // ---- FORM LOGIN CONFIG ----

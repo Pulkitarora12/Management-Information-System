@@ -7,6 +7,7 @@ import com.notes.notes.rbac.repository.RolePermissionRepository;
 import com.notes.notes.rbac.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,12 +32,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthorizationService {
 
     public static final String SUPER_ADMIN_ROLE_KEY = "SUPER_ADMIN";
+    private static final String FORM_BUILDER_RESOURCE_KEY = "FORM_BUILDER";
 
     private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
 
     private final Map<Long, UserGrants> cache = new ConcurrentHashMap<>();
 
+    @Transactional(readOnly = true)
     public boolean can(Long userId, String resKey, String actionKey) {
         if (userId == null || resKey == null || actionKey == null) {
             return false;
@@ -44,6 +47,7 @@ public class AuthorizationService {
         return scopeFor(userId, resKey, actionKey) != PermissionScope.NONE;
     }
 
+    @Transactional(readOnly = true)
     public PermissionScope scopeFor(Long userId, String resKey, String actionKey) {
         if (userId == null || resKey == null || actionKey == null) {
             return PermissionScope.NONE;
@@ -52,6 +56,16 @@ public class AuthorizationService {
         if (grants.superAdmin()) {
             return PermissionScope.ALL;
         }
+        PermissionScope scope = grantedScope(grants, resKey, actionKey);
+        // A grant on FORM_BUILDER applies to every custom form (FORM_<id>), present and future,
+        // on top of any grant the user holds on that specific form.
+        if (isCustomFormResource(resKey)) {
+            scope = widerOf(scope, grantedScope(grants, FORM_BUILDER_RESOURCE_KEY, actionKey));
+        }
+        return scope;
+    }
+
+    private static PermissionScope grantedScope(UserGrants grants, String resKey, String actionKey) {
         Map<String, PermissionScope> resourceGrants = grants.grantsByResource().get(resKey);
         if (resourceGrants == null) {
             return PermissionScope.NONE;
@@ -60,12 +74,23 @@ public class AuthorizationService {
         return scope == null ? PermissionScope.NONE : scope;
     }
 
+    private static boolean isCustomFormResource(String resKey) {
+        return resKey.startsWith("FORM_") && !FORM_BUILDER_RESOURCE_KEY.equals(resKey);
+    }
+
+    private static PermissionScope widerOf(PermissionScope a, PermissionScope b) {
+        if (a == PermissionScope.NONE) return b;
+        if (b == PermissionScope.NONE) return a;
+        return widerScope(a, b);
+    }
+
     /**
      * "RES:ACTION" strings for every grant this user holds, for loading into
      * UserDetailsImpl (D2 step 4). Empty for SUPER_ADMIN: enumerating every current
      * resource would still miss resources created later, and @authz.can() already
      * grants SUPER_ADMIN access independent of authorities.
      */
+    @Transactional(readOnly = true)
     public Set<String> grantedAuthoritiesFor(Long userId) {
         UserGrants grants = cache.computeIfAbsent(userId, this::loadGrants);
         if (grants.superAdmin()) {

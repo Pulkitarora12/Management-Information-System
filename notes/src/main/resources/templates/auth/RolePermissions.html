@@ -37,6 +37,7 @@
         .back-link-container { text-align: center; margin-top: 16px; }
         .back-link { color: #667eea; text-decoration: none; font-weight: 500; }
     </style>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
 <div class="container">
@@ -60,7 +61,8 @@
                 <tr th:each="row : ${grid.rows}">
                     <td class="resource-name" th:text="${row.resourceName}"></td>
                     <td th:each="cell : ${row.cells}">
-                        <select th:name="${'perm_' + cell.permissionId}">
+                        <select th:name="${'perm_' + cell.permissionId}"
+                                th:attr="data-res=${row.resKey},data-action=${cell.actionKey}">
                             <option value="" th:selected="${cell.scope.name() == 'NONE'}">None</option>
                             <option value="OWN" th:selected="${cell.scope.name() == 'OWN'}">Own</option>
                             <option value="ALL" th:selected="${cell.scope.name() == 'ALL'}">All</option>
@@ -79,6 +81,22 @@
         <a th:href="@{/admin/roles}" class="back-link">Back to Roles</a>
     </div>
 </div>
+
+<script>
+    // Setting a FORM_BUILDER permission applies the same value to that action on every
+    // custom form row (select and deselect). Changing an individual form never touches FORM_BUILDER.
+    document.querySelectorAll('select[data-res="FORM_BUILDER"]').forEach(function (builderSelect) {
+        builderSelect.addEventListener('change', function () {
+            var action = builderSelect.getAttribute('data-action');
+            document.querySelectorAll('select[data-action="' + action + '"]').forEach(function (sel) {
+                var res = sel.getAttribute('data-res');
+                if (res && res.indexOf('FORM_') === 0 && res !== 'FORM_BUILDER') {
+                    sel.value = builderSelect.value;
+                }
+            });
+        });
+    });
+</script>
     <div th:replace="~{fragments/back-to-dashboard :: button}"></div>
 </body>
 </html>

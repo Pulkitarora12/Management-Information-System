@@ -1,0 +1,10 @@
+services:
+  mis-app:
+    build: .
+    container_name: mis-app
+    restart: unless-stopped
+    # MySQL runs as a service on the host; host networking lets the app reach it on localhost:3306
+    network_mode: host
+    env_file: .env
+    volumes:
+      - ./data:/data
