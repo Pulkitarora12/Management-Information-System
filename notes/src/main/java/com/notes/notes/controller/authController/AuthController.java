@@ -47,6 +47,11 @@ public class AuthController {
         this.taskTemplateService = taskTemplateService;
     }
 
+    @GetMapping("/access-denied")
+    public String accessDenied() {
+        return "auth/access-denied";
+    }
+
     @GetMapping("/login")
     public String showLoginPage(){
         return "auth/login"; // login.html
