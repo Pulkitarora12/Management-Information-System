@@ -14,7 +14,7 @@ MIS is an enterprise-grade management system designed for manufacturing organiza
 
 ### 1. **Authentication & User Management**
 - User registration with email verification
-- Role-based access control (ADMIN/USER)
+- Dynamic role-based access control with per-module permissions (see sections 8 and 9)
 - Password reset functionality
 - Admin-managed employee registration
 - User profile management with department and contact info
@@ -115,6 +115,80 @@ A specialized human resource management module designed to maintain employee det
 - **Real-Time In/Out movement logs (Gate Log):** Monitor check-out/check-in logs, calculate movement duration in minutes, and store customizable log remarks.
 - **Monthly Summary & Reporting:** Generate aggregate reports of total check-outs and duration (hours & minutes) for each employee by selecting any month and year.
 
+### 8. **Custom Form Builder**
+Admins can design new data-entry forms from the browser, without writing code or changing the database by hand. Every form gets its own entry screen, history screen and permissions.
+
+**Designing a form** (`/custom-forms/new`)
+- Give the form a key, a name and a description.
+- Add fields one by one, each with a field key, a label, a type and a *required* flag. Fields can be removed while designing.
+- A live preview shows what the entry screen will look like before the form is created.
+
+**Field types**
+
+| Type | What it holds |
+|---|---|
+| TEXT | Short free text |
+| NUMBER | Whole numbers |
+| DECIMAL | Numbers with decimals |
+| DATE | A calendar date |
+| BOOLEAN | Yes / No |
+| DROPDOWN | One choice from a list (entered as plain text for now) |
+| MASTER_REF | Intended to pick a value from a master (entered as plain text for now) |
+| FILE | A file name or path (real file upload is not wired in yet) |
+
+**Using a form**
+- `/custom-forms` lists the forms the signed-in user is allowed to see. Each form card has a **View** button (entry history) and an **Entry** button (fill the form).
+- Entries can be edited or deleted from the history screen, and those buttons only appear for users who hold the matching permission.
+- Each form is stored in its own database table with one typed column per field, so entries stay fast to query and values are stored with the right type.
+
+**Access to forms**
+- Every new form registers its own permission resource (`FORM_<id>`), so access can be granted per form.
+- A new form gives nobody access by default. Super Admins always have access.
+- A permission held on **Form Builder** also applies to **every** form, now and in the future (see section 9).
+
+---
+
+### 9. **Roles & Permissions (RBAC)**
+Access is controlled by roles. A role is a set of permissions, and a permission is an *action* on a *resource*. Everything is stored as data, so admins can change who can do what from the browser, with no code changes.
+
+**Resources** (one per module, plus one per custom form)
+
+| Resource | Covers |
+|---|---|
+| Production Entries | Production entry and history |
+| Raw Material Inspection | RMIR entry and history |
+| Tasks | Task management |
+| Task Templates | Recurring task templates |
+| Masters | Master data and uploads |
+| HR Employee Master | Employee records |
+| HR In/Out | Gate log and monthly summary |
+| User Management | Admin user screens |
+| Roles & Permissions | Role editor and permission grid |
+| Form Builder | Create and list custom forms |
+| Custom forms (`FORM_<id>`) | Each form's entries, added automatically |
+
+**Actions:** `VIEW`, `CREATE`, `EDIT`, `DELETE`, `EXPORT` and `ADMIN`. `ADMIN` on a resource implies every other action on it.
+
+**Scope:** each permission is granted as **ALL** (any record) or **OWN** (only records the user created). OWN is enforced for Production and RMIR entries, which record who created them.
+
+**Built-in roles**
+
+| Role | Access |
+|---|---|
+| Super Admin | Everything, including forms and modules created later. Cannot be deleted. |
+| Standard User | Default role for non-admin users. Tasks, HR Employee and HR In/Out: view, create, edit, delete. Production and RMIR: view and create everything, but edit and delete only their own entries. Form Builder: view and create. No access to Masters, Task Templates, exports or the admin area. |
+
+**Managing permissions** (admin only)
+- `/admin/roles` lists roles and creates new ones.
+- Each role has a permission grid with one row per resource and one column per action. Every cell is set to None, Own or All, then saved.
+- In the grid, setting a Form Builder cell copies that value to the same action on every custom form row. Changing a single form never changes Form Builder.
+- Roles are assigned to users, and a user's permissions are the combination of their roles (the wider scope wins).
+
+**What users see**
+- Dashboard buttons, history actions (Edit, Delete) and menu items only show when the user holds the matching permission.
+- Opening a page without the right permission shows an *Access Denied* page.
+- Permissions are cached per user and refreshed whenever roles or assignments change.
+
 ---
 
 ## 🛠 Tech Stack
@@ -123,7 +197,7 @@ A specialized human resource management module designed to maintain employee det
 - **Framework:** Spring Boot 3.x
 - **Security:** Spring Security (Form-based authentication)
 - **ORM:** Spring Data JPA / Hibernate
-- **Database:** MySQL
+- **Database:** MySQL, with schema versioned by Flyway migrations
 - **Validation:** Jakarta Validation
 - **Scheduler:** Spring @Scheduled
 - **WebSocket:** Spring WebSocket with STOMP protocol
@@ -159,7 +233,8 @@ A specialized human resource management module designed to maintain employee det
 
 ### Security
 - Password encryption with BCrypt
-- Role-based access control
+- Dynamic role-based access control, with permissions per module and per custom form
+- Access Denied page for pages a user is not permitted to open
 - Session management
 
 ---
@@ -305,7 +380,10 @@ Once running, access at: **http://localhost:8080**
 - `/hr/employee-master` - Employee database (HR)
 - `/hr/in-out` - Employee gate logs / movement tracking (HR)
 - `/hr/in-out/monthly-summary` - Monthly employee movement summaries (HR)
-- `/admin/users` - User management (ADMIN only)
+- `/custom-forms` - List of custom forms; `/custom-forms/new` creates one (needs Form Builder permission)
+- `/custom-forms/{id}/entry` and `/custom-forms/{id}/view` - Fill a form / see its entries
+- `/admin/users` - User management (admin only)
+- `/admin/roles` - Roles and permission grid (admin only)
 
 ---
 
@@ -332,7 +410,7 @@ Once running, access at: **http://localhost:8080**
 
 1. **Change Admin Password** immediately after first login
 2. **Enable CSRF Protection** (currently disabled in `SecurityConfig.java`)
-3. **Set** `spring.jpa.hibernate.ddl-auto=validate` for production
+3. Keep `spring.jpa.hibernate.ddl-auto=validate`; the schema is created and upgraded by the Flyway migrations in `src/main/resources/db/migration`
 4. **Configure HTTPS/SSL** for secure communication
 5. **Use Environment Variables** instead of hardcoded credentials
 6. **Set appropriate log levels** (WARN/ERROR in production)
